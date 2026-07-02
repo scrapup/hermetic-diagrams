@@ -45,6 +45,8 @@ export default [
     files: ['test/**/*.ts', '**/*.spec.ts', '**/*.test.ts'],
     rules: {
       '@typescript-eslint/no-non-null-assertion': 'off',
+      // Test mocks are frequently sync stand-ins for async signatures.
+      '@typescript-eslint/require-await': 'off',
     },
   },
 ];
