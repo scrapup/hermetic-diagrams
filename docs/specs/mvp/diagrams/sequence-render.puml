@@ -1,0 +1,37 @@
+@startuml sequence-render
+title hermetic-diagrams — Rendering (success + failure)
+
+actor "Requester" as sol
+participant "MCP Gateway (PEP)" as mcp
+participant "Kroki core" as kroki
+
+== Boot (fail-closed) ==
+mcp -> mcp: Egress self-check\n(attempt outbound to external network)
+alt Reached the outside (containment failed)
+  mcp -> mcp: Refuse to operate (fail-closed)
+else No egress (contained)
+  mcp -> mcp: Ready to serve
+end
+
+== Render ==
+sol -> mcp: render_diagram(format, source, output)
+mcp -> mcp: 1. validate format (allowlist)
+mcp -> mcp: 2. validate syntax
+mcp -> mcp: 3. security scan\n(external refs, DTD, limits)
+
+alt Invalid format/syntax
+  mcp --> sol: descriptive error (no render)
+else External reference detected
+  mcp --> sol: refuse (no render, no external request)
+else Valid and safe
+  mcp -> kroki: POST source (internal HTTP)
+  alt Render OK
+    kroki --> mcp: image (SVG/PNG)
+    mcp -> mcp: 4. sanitize SVG\n(strip script/foreignObject/refs)
+    mcp --> sol: contained image
+  else Timeout / render error
+    kroki --> mcp: error / timeout
+    mcp --> sol: handled error
+  end
+end
+@enduml
