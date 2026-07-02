@@ -4,7 +4,7 @@ import { HermeticError } from '../errors.js';
 import { logger } from '../logger.js';
 import { validateFormat } from '../pep/format-validator.js';
 import { validateSyntax } from '../pep/syntax-validator.js';
-import { scanSecurity } from '../pep/security-scanner.js';
+import { assertSourceSize, scanSecurity } from '../pep/security-scanner.js';
 import { renderWithKroki, type FetchLike } from './kroki-client.js';
 import { sanitizeSvg } from './svg-sanitizer.js';
 import type { ConcurrencyGuard } from './concurrency.js';
@@ -48,6 +48,8 @@ export async function renderDiagram(
   }
   const source = request.source;
 
+  // Size is the FIRST gate — reject oversized input before any parsing/regex (local-DoS defense).
+  assertSourceSize(source, deps.config.maxSourceBytes);
   validateSyntax(format, source);
   scanSecurity(format, source, deps.config.maxSourceBytes);
 

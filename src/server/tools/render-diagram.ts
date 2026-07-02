@@ -48,7 +48,16 @@ export function createRenderDiagramHandler(deps: RenderPipelineDeps) {
           ? [{ type: 'text', text: outcome.data }]
           : [{ type: 'image', data: outcome.data, mimeType: outcome.mimeType }];
 
-      return { content, structuredContent: { ...outcome } };
+      // structuredContent carries metadata only; the payload lives in `content` (avoids doubling
+      // a large PNG over stdio).
+      return {
+        content,
+        structuredContent: {
+          format: outcome.format,
+          mimeType: outcome.mimeType,
+          encoding: outcome.encoding,
+        },
+      };
     } catch (err) {
       const mapped = mapError(err);
       return {

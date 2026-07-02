@@ -32,15 +32,26 @@ describe('renderWithKroki', () => {
     expect(result.contentType).toBe('image/svg+xml');
   });
 
-  it('maps a non-2xx response to RENDER_ERROR with a detail', async () => {
+  it('maps a Kroki 4xx to INVALID_SYNTAX with a detail (requester error, RN-09)', async () => {
     const fetchImpl: FetchLike = async () =>
       new Response('syntax error at line 1', { status: 400 });
     try {
       await renderWithKroki(base, fetchImpl);
     } catch (err) {
       expect(err).toBeInstanceOf(HermeticError);
-      expect((err as HermeticError).code).toBe('RENDER_ERROR');
+      expect((err as HermeticError).code).toBe('INVALID_SYNTAX');
       expect((err as HermeticError).detail).toContain('syntax error');
+      return;
+    }
+    throw new Error('expected rejection');
+  });
+
+  it('maps a Kroki 5xx to RENDER_ERROR', async () => {
+    const fetchImpl: FetchLike = async () => new Response('boom', { status: 502 });
+    try {
+      await renderWithKroki(base, fetchImpl);
+    } catch (err) {
+      expect((err as HermeticError).code).toBe('RENDER_ERROR');
       return;
     }
     throw new Error('expected rejection');

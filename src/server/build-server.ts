@@ -30,6 +30,9 @@ export function buildServer(
     registerRenderDiagram(server, { config, guard, ...(fetchImpl ? { fetchImpl } : {}) });
     logger.info('server.ready', { renderEnabled: true });
   } else {
+    // Fail-closed: `NOT_CONTAINED` is realized by NOT registering the render tool at all (a stronger
+    // guarantee than returning the error per call). The `NOT_CONTAINED` state is observable via the
+    // always-registered `containment_status` tool.
     logger.warn('server.degraded', { renderEnabled: false, reason: 'NOT_CONTAINED' });
   }
 

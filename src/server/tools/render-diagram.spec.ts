@@ -68,11 +68,11 @@ describe('render_diagram handler', () => {
     expect(result.structuredContent).toMatchObject({ error: { code: 'EXTERNAL_REFERENCE' } });
   });
 
-  it('maps a Kroki 400 to RENDER_ERROR', async () => {
+  it('maps a Kroki 4xx to INVALID_SYNTAX', async () => {
     const handler = createRenderDiagramHandler(
       deps(async () => new Response('bad syntax', { status: 400 })),
     );
     const result = await handler({ format: 'graphviz', source: 'digraph { a -> b }' });
-    expect(result.structuredContent).toMatchObject({ error: { code: 'RENDER_ERROR' } });
+    expect(result.structuredContent).toMatchObject({ error: { code: 'INVALID_SYNTAX' } });
   });
 });
