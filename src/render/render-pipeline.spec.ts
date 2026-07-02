@@ -66,4 +66,39 @@ describe('renderDiagram — happy path', () => {
     expect(outcome.data).toMatch(/<svg/);
     expect(fetchCalls()).toBe(1);
   });
+
+  it('renders PNG as base64 (raster branch, no sanitization)', async () => {
+    const png = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a]);
+    const config = loadConfig();
+    const deps: RenderPipelineDeps = {
+      config,
+      guard: new ConcurrencyGuard(2),
+      fetchImpl: async () => new Response(png, { status: 200, headers: { 'content-type': 'image/png' } }),
+    };
+    const outcome = await renderDiagram({ format: 'graphviz', source: 'digraph { a -> b }', output: 'png' }, deps);
+    expect(outcome).toMatchObject({ format: 'png', mimeType: 'image/png', encoding: 'base64' });
+    expect(Buffer.from(outcome.data, 'base64')).toEqual(Buffer.from(png));
+  });
+});
+
+describe('renderDiagram — engine error propagation', () => {
+  function depsWith(status: number): RenderPipelineDeps {
+    return {
+      config: loadConfig(),
+      guard: new ConcurrencyGuard(2),
+      fetchImpl: async () => new Response('engine says no', { status }),
+    };
+  }
+
+  it('propagates a Kroki 4xx as INVALID_SYNTAX', async () => {
+    expect(await codeOf(() => renderDiagram({ format: 'graphviz', source: 'digraph { a -> b }' }, depsWith(400)))).toBe(
+      'INVALID_SYNTAX',
+    );
+  });
+
+  it('propagates a Kroki 5xx as RENDER_ERROR', async () => {
+    expect(await codeOf(() => renderDiagram({ format: 'graphviz', source: 'digraph { a -> b }' }, depsWith(503)))).toBe(
+      'RENDER_ERROR',
+    );
+  });
 });

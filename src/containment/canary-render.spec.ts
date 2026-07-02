@@ -1,58 +1,56 @@
 import { describe, it, expect } from 'vitest';
-import { canaryRender, buildCanarySource, CANARY_TOKEN } from './canary-render.js';
+import { canaryRender, buildCanarySource, CANARY_TOKEN, type CanaryDeps } from './canary-render.js';
 
-const NEVER_HIT = (): boolean => false;
-const WAS_HIT = (): boolean => true;
+const TRUE = (): boolean => true;
+const FALSE = (): boolean => false;
+
+function deps(overrides: Partial<CanaryDeps>): CanaryDeps {
+  return {
+    canaryUrl: 'http://sink.test/canary',
+    renderRaw: async () => '<svg>ok</svg>',
+    wasSinkHit: FALSE,
+    sinkReachable: TRUE,
+    ...overrides,
+  };
+}
 
 describe('canaryRender', () => {
   it('builds a source that embeds a remote include', () => {
     expect(buildCanarySource('http://sink.test/x')).toContain('!includeurl http://sink.test/x');
   });
 
-  it('fails when the sink was reached', async () => {
-    const result = await canaryRender({
-      canaryUrl: 'http://sink.test/x',
-      renderRaw: async () => '<svg>ok</svg>',
-      wasSinkHit: WAS_HIT,
-    });
+  it('fails when the sink was reached (real leak)', async () => {
+    const result = await canaryRender(deps({ wasSinkHit: TRUE }));
     expect(result.pass).toBe(false);
   });
 
-  it('fails when the token leaks into the output (even if sink flag is false)', async () => {
-    const result = await canaryRender({
-      canaryUrl: 'http://sink.test/x',
-      renderRaw: async () => `<svg>${CANARY_TOKEN}</svg>`,
-      wasSinkHit: NEVER_HIT,
-    });
+  it('fails when the token leaks into the output', async () => {
+    const result = await canaryRender(deps({ renderRaw: async () => `<svg>${CANARY_TOKEN}</svg>` }));
     expect(result.pass).toBe(false);
   });
 
-  it('passes when the sink is cold and no token appears', async () => {
-    const result = await canaryRender({
-      canaryUrl: 'http://sink.test/x',
-      renderRaw: async () => '<svg>ok</svg>',
-      wasSinkHit: NEVER_HIT,
-    });
-    expect(result.pass).toBe(true);
+  it('fails closed when the sink is not reachable (cannot prove containment)', async () => {
+    const result = await canaryRender(deps({ sinkReachable: FALSE }));
+    expect(result.pass).toBe(false);
+    expect(result.detail).toMatch(/not reachable/i);
+  });
+
+  it('passes when the sink is reachable, cold, and no token appears', async () => {
+    expect((await canaryRender(deps({}))).pass).toBe(true);
   });
 
   it('passes when the render is refused/errors and the sink is cold', async () => {
-    const result = await canaryRender({
-      canaryUrl: 'http://sink.test/x',
-      renderRaw: async () => null,
-      wasSinkHit: NEVER_HIT,
-    });
-    expect(result.pass).toBe(true);
+    expect((await canaryRender(deps({ renderRaw: async () => null }))).pass).toBe(true);
   });
 
   it('passes when renderRaw throws and the sink is cold', async () => {
-    const result = await canaryRender({
-      canaryUrl: 'http://sink.test/x',
-      renderRaw: async () => {
-        throw new Error('blocked');
-      },
-      wasSinkHit: NEVER_HIT,
-    });
+    const result = await canaryRender(
+      deps({
+        renderRaw: async () => {
+          throw new Error('blocked');
+        },
+      }),
+    );
     expect(result.pass).toBe(true);
   });
 });

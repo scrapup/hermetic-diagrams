@@ -23,9 +23,21 @@ export interface CanaryDeps {
   readonly canaryUrl: string;
   /** Whether the sink received a request during/after the render. */
   readonly wasSinkHit: () => boolean;
+  /** Whether the sink is on a routable address the engine could actually reach. */
+  readonly sinkReachable: () => boolean;
 }
 
 export async function canaryRender(deps: CanaryDeps): Promise<CheckResult> {
+  // Fail-closed: if the sink is not reachable, a cold sink proves nothing (it could be unreachable
+  // rather than the include being refused). Refuse rather than pass vacuously.
+  if (!deps.sinkReachable()) {
+    return {
+      name: 'canaryRender',
+      pass: false,
+      detail: 'Canary sink is not reachable on a routable address; containment cannot be proven.',
+    };
+  }
+
   const source = buildCanarySource(deps.canaryUrl);
   let output: string | null = null;
   try {

@@ -124,6 +124,12 @@ Transport: **MCP over stdio**. Three tools.
 }
 ```
 
+> **`NOT_CONTAINED` realization.** The gateway is fail-closed by *not registering* `render_diagram`
+> when boot containment fails, rather than registering it and returning a `NOT_CONTAINED` error per
+> call — a stronger guarantee (the capability does not exist without containment). `NOT_CONTAINED` is
+> therefore observable via the always-registered `containment_status` tool (`contained: false`), not
+> as a `render_diagram` error in practice; it is retained in the error enum for completeness.
+
 ### 4.2 `list_formats`
 
 **Response:**

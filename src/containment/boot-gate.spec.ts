@@ -8,6 +8,7 @@ const cleanCanary: CanaryDeps = {
   canaryUrl: 'http://sink.test/x',
   renderRaw: async () => '<svg>ok</svg>',
   wasSinkHit: () => false,
+  sinkReachable: () => true,
 };
 
 describe('runBootGate', () => {
@@ -61,6 +62,7 @@ describe('runBootGate', () => {
         canaryUrl: 'http://sink.test/x',
         renderRaw: async () => '<svg>HERMETIC_CANARY_LEAK</svg>',
         wasSinkHit: () => false,
+        sinkReachable: () => true,
       },
     });
     expect(report.contained).toBe(false);

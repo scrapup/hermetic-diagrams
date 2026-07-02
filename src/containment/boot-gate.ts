@@ -118,6 +118,7 @@ export async function proveContainment(
         renderRaw: defaultRenderRaw(config, fetchImpl),
         canaryUrl: sink.url,
         wasSinkHit: () => sink.wasHit(),
+        sinkReachable: () => sink.routable,
       },
     });
   } finally {

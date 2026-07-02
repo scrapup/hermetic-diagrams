@@ -32,13 +32,27 @@ export interface KrokiRenderResult {
 }
 
 function outputTooLarge(maxOutputBytes: number): HermeticError {
-  return new HermeticError('RENDER_ERROR', `Rendered output exceeds ${maxOutputBytes} bytes.`);
+  return new HermeticError('TOO_LARGE', `Rendered output exceeds ${maxOutputBytes} bytes.`);
+}
+
+/** A promise that rejects with RENDER_TIMEOUT the moment `signal` aborts (or immediately if already). */
+function abortAsTimeout(signal: AbortSignal, timeoutMs: number): Promise<never> {
+  return new Promise<never>((_resolve, reject) => {
+    const fail = (): void =>
+      reject(new HermeticError('RENDER_TIMEOUT', `Render exceeded ${timeoutMs} ms and was aborted.`));
+    if (signal.aborted) {
+      fail();
+      return;
+    }
+    signal.addEventListener('abort', fail, { once: true });
+  });
 }
 
 async function readCapped(
   response: Response,
   maxOutputBytes: number,
   signal: AbortSignal,
+  timeoutMs: number,
 ): Promise<Uint8Array> {
   const declared = response.headers.get('content-length');
   if (declared !== null && Number(declared) > maxOutputBytes) {
@@ -47,7 +61,8 @@ async function readCapped(
 
   const body = response.body;
   if (body === null) {
-    const buf = new Uint8Array(await response.arrayBuffer());
+    // Race the buffered read against the timeout so a hung body still aborts.
+    const buf = new Uint8Array(await Promise.race([response.arrayBuffer(), abortAsTimeout(signal, timeoutMs)]));
     if (buf.byteLength > maxOutputBytes) throw outputTooLarge(maxOutputBytes);
     return buf;
   }
@@ -58,9 +73,9 @@ async function readCapped(
   let total = 0;
   try {
     for (;;) {
-      // The timeout aborts the controller; surface it as a timeout rather than hanging on read.
-      if (signal.aborted) throw new HermeticError('RENDER_TIMEOUT', 'Render aborted while reading the response.');
-      const { done, value } = await reader.read();
+      // Race each read against the abort: a hung body (stream ignoring abort) still yields
+      // RENDER_TIMEOUT deterministically, and the slot is released via the finally below.
+      const { done, value } = await Promise.race([reader.read(), abortAsTimeout(signal, timeoutMs)]);
       if (done) break;
       if (value) {
         total += value.byteLength;
@@ -136,7 +151,16 @@ export async function renderWithKroki(
       );
     }
 
-    const bytes = await readCapped(response, maxOutputBytes, controller.signal);
+    let bytes: Uint8Array;
+    try {
+      bytes = await readCapped(response, maxOutputBytes, controller.signal, timeoutMs);
+    } catch (err) {
+      // A raw AbortError from the stream (if it beat the race) still maps to a timeout.
+      if (!(err instanceof HermeticError) && controller.signal.aborted) {
+        throw new HermeticError('RENDER_TIMEOUT', `Render exceeded ${timeoutMs} ms and was aborted.`);
+      }
+      throw err;
+    }
     const contentType =
       response.headers.get('content-type') ?? (output === 'svg' ? 'image/svg+xml' : 'image/png');
     return { bytes, contentType };

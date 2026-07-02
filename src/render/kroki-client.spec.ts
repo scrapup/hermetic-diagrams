@@ -79,6 +79,23 @@ describe('renderWithKroki', () => {
     );
   });
 
+  it('times out (RENDER_TIMEOUT) when the response body hangs', async () => {
+    // Headers arrive, but the body never produces a chunk and ignores cancel.
+    const stream = new ReadableStream<Uint8Array>({
+      start() {
+        /* never enqueue, never close */
+      },
+    });
+    const fetchImpl: FetchLike = async () => new Response(stream, { status: 200 });
+    try {
+      await renderWithKroki({ ...base, timeoutMs: 30 }, fetchImpl);
+    } catch (err) {
+      expect((err as HermeticError).code).toBe('RENDER_TIMEOUT');
+      return;
+    }
+    throw new Error('expected timeout');
+  });
+
   it('maps an aborted request to RENDER_TIMEOUT', async () => {
     const fetchImpl: FetchLike = (_url, init) =>
       new Promise((_resolve, reject) => {
