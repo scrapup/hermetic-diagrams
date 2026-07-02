@@ -62,8 +62,8 @@ function sanitizeElement(el: Element): void {
     const lower = name.toLowerCase();
     const localName = lower.includes(':') ? lower.slice(lower.indexOf(':') + 1) : lower;
 
-    // Event handlers.
-    if (lower.startsWith('on')) {
+    // Event handlers — match on the local name so a namespace-prefixed `x:onload` is caught too.
+    if (localName.startsWith('on')) {
       el.removeAttribute(name);
       continue;
     }

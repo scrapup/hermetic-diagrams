@@ -10,7 +10,8 @@ ARG NODE_IMAGE=node:24.18.0-bookworm-slim@sha256:b31e7a42fdf8b8aa5f5ed477c72d694
 FROM ${NODE_IMAGE} AS build
 WORKDIR /app
 COPY package.json package-lock.json ./
-RUN npm ci
+# --ignore-scripts closes the dependency postinstall vector; the TS build is invoked explicitly.
+RUN npm ci --ignore-scripts
 COPY tsconfig.json tsconfig.build.json ./
 COPY src ./src
 RUN npm run build

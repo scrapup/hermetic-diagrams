@@ -23,6 +23,8 @@ services:
     networks:
       - hermetic
     # No published ports: the engine is never directly reachable.
+    security_opt:
+      - no-new-privileges:true
     healthcheck:
       test: ["CMD-SHELL", "wget -q -O - http://localhost:8000/health || exit 1"]
       interval: 10s
@@ -52,6 +54,10 @@ services:
       kroki:
         condition: service_healthy
     # No ports, no volumes, no Docker socket. stdio is attached by `run -T`.
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
     stdin_open: true
     tty: false
     deploy:
