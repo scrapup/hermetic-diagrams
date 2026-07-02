@@ -1,0 +1,62 @@
+# Contained rendering stack (TF-72-03). Containment is a property of the topology:
+#  - the `hermetic` network is `internal: true` — no default gateway, no route out;
+#  - no service publishes a port;
+#  - the MCP holds no Docker socket; it reaches Kroki only over internal DNS (`kroki:8000`).
+# Images are pinned by digest (RN-08); see images.lock. `KROKI_SAFE_MODE=SECURE` is barrier 3.
+
+name: hermetic-diagrams
+
+networks:
+  hermetic:
+    driver: bridge
+    internal: true
+
+services:
+  kroki:
+    # yuzutech/kroki core gateway (local-render notations only; no Chromium companions).
+    image: yuzutech/kroki@sha256:c16303ecd8ae840a6e3a76efa53468836c6297eeb7b7316845c3b24e8dbd0398
+    environment:
+      KROKI_SAFE_MODE: "SECURE"
+      # Neutralize %getenv by keeping the engine env free of secrets; cap PlantUML expansion.
+      PLANTUML_LIMIT_SIZE: "4096"
+      JAVA_OPTS: "-Xmx512m"
+    networks:
+      - hermetic
+    # No published ports: the engine is never directly reachable.
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O - http://localhost:8000/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+          cpus: "1.5"
+          pids: 256
+    restart: unless-stopped
+
+  mcp:
+    # Built in this repo (TF-72-02). Ephemeral per session via `docker compose run -T mcp`.
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: hermetic-diagrams-mcp:dev
+    profiles: ["gateway"]
+    environment:
+      KROKI_BASE_URL: "http://kroki:8000"
+    networks:
+      - hermetic
+    depends_on:
+      kroki:
+        condition: service_healthy
+    # No ports, no volumes, no Docker socket. stdio is attached by `run -T`.
+    stdin_open: true
+    tty: false
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+          cpus: "0.5"
+          pids: 128
