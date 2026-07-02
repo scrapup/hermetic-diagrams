@@ -2,7 +2,8 @@ import type { HermeticConfig } from '../config.js';
 import { logger } from '../logger.js';
 import { renderWithKroki, type FetchLike } from '../render/kroki-client.js';
 import { egressSelfCheck, tcpConnectProbe, type ConnectProbe } from './egress-check.js';
-import { canaryRender, type CanaryDeps } from './canary-render.js';
+import { canaryRender, CANARY_TOKEN, type CanaryDeps } from './canary-render.js';
+import { createCanarySink } from './canary-sink.js';
 import type { ContainmentReport } from './types.js';
 
 /**
@@ -74,36 +75,52 @@ export function defaultKrokiHealth(config: HermeticConfig, fetchImpl: FetchLike 
   };
 }
 
-/** Default canary deps: render raw PlantUML via the internal Kroki, decoding the SVG output to text. */
-export function defaultCanaryDeps(config: HermeticConfig, fetchImpl: FetchLike = fetch): CanaryDeps {
-  return {
-    canaryUrl: `http://${config.egressCheckHost}:${config.egressCheckPort}/canary`,
-    renderRaw: async (diagramType, source): Promise<string | null> => {
-      try {
-        const { bytes } = await renderWithKroki(
-          {
-            baseUrl: config.krokiBaseUrl,
-            diagramType,
-            output: 'svg',
-            source,
-            timeoutMs: config.renderTimeoutMs,
-            maxOutputBytes: config.maxOutputBytes,
-          },
-          fetchImpl,
-        );
-        return Buffer.from(bytes).toString('utf8');
-      } catch {
-        return null;
-      }
-    },
+/** Default `renderRaw`: render raw PlantUML via the internal Kroki, decoding the SVG output to text. */
+export function defaultRenderRaw(
+  config: HermeticConfig,
+  fetchImpl: FetchLike = fetch,
+): CanaryDeps['renderRaw'] {
+  return async (diagramType, source): Promise<string | null> => {
+    try {
+      const { bytes } = await renderWithKroki(
+        {
+          baseUrl: config.krokiBaseUrl,
+          diagramType,
+          output: 'svg',
+          source,
+          timeoutMs: config.renderTimeoutMs,
+          maxOutputBytes: config.maxOutputBytes,
+        },
+        fetchImpl,
+      );
+      return Buffer.from(bytes).toString('utf8');
+    } catch {
+      return null;
+    }
   };
 }
 
-/** Convenience used by the entrypoint: prove containment with the default, live dependencies. */
-export function proveContainment(config: HermeticConfig, fetchImpl: FetchLike = fetch): Promise<ContainmentReport> {
-  return runBootGate({
-    config,
-    checkKrokiHealth: defaultKrokiHealth(config, fetchImpl),
-    canary: defaultCanaryDeps(config, fetchImpl),
-  });
+/**
+ * Convenience used by the entrypoint: prove containment with the default, live dependencies. Spins
+ * up an ephemeral in-process sink so the canary can assert a real zero-hit (not a vacuous token
+ * check), then tears it down.
+ */
+export async function proveContainment(
+  config: HermeticConfig,
+  fetchImpl: FetchLike = fetch,
+): Promise<ContainmentReport> {
+  const sink = await createCanarySink(CANARY_TOKEN);
+  try {
+    return await runBootGate({
+      config,
+      checkKrokiHealth: defaultKrokiHealth(config, fetchImpl),
+      canary: {
+        renderRaw: defaultRenderRaw(config, fetchImpl),
+        canaryUrl: sink.url,
+        wasSinkHit: () => sink.wasHit(),
+      },
+    });
+  } finally {
+    await sink.close();
+  }
 }

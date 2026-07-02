@@ -4,7 +4,11 @@ import { loadConfig } from '../config.js';
 import type { CanaryDeps } from './canary-render.js';
 
 const config = loadConfig();
-const cleanCanary: CanaryDeps = { canaryUrl: 'http://sink.test/x', renderRaw: async () => '<svg>ok</svg>' };
+const cleanCanary: CanaryDeps = {
+  canaryUrl: 'http://sink.test/x',
+  renderRaw: async () => '<svg>ok</svg>',
+  wasSinkHit: () => false,
+};
 
 describe('runBootGate', () => {
   it('is contained when health passes, egress is blocked, and the canary is clean', async () => {
@@ -53,7 +57,11 @@ describe('runBootGate', () => {
       config,
       checkKrokiHealth: async () => true,
       egressProbe: async () => false,
-      canary: { canaryUrl: 'http://sink.test/x', renderRaw: async () => '<svg>HERMETIC_CANARY_LEAK</svg>' },
+      canary: {
+        canaryUrl: 'http://sink.test/x',
+        renderRaw: async () => '<svg>HERMETIC_CANARY_LEAK</svg>',
+        wasSinkHit: () => false,
+      },
     });
     expect(report.contained).toBe(false);
     expect(report.checks.canaryRender).toBe('fail');
