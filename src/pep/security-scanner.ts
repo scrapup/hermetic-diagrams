@@ -98,11 +98,13 @@ function scanVega(source: string): void {
     return;
   }
   walkJson(parsed, (key, value) => {
-    // `data.url`, `background` image URLs, `signal`-loaded resources, etc.
+    // `data.url`, image `url` — the real remote-fetch vectors.
     if (key.toLowerCase() === 'url') {
       reject('Vega/Vega-Lite `url` property (remote data/image).');
     }
-    if (typeof value === 'string' && URL_SCHEME.test(value)) {
+    // Any other string value carrying a network scheme, except the harmless `$schema` metadata
+    // identifier (a JSON Schema URL the renderer never fetches).
+    if (key !== '$schema' && typeof value === 'string' && URL_SCHEME.test(value)) {
       reject('Vega/Vega-Lite string value references an external URL.');
     }
   });

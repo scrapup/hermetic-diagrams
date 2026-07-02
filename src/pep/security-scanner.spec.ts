@@ -78,6 +78,14 @@ describe('scanSecurity — Vega / Vega-Lite vectors', () => {
     });
     expect(() => scanSecurity('vega-lite', spec, MAX)).not.toThrow();
   });
+  it('allows the $schema metadata URL (not a fetch vector)', () => {
+    const spec = JSON.stringify({
+      $schema: 'https://vega.github.io/schema/vega-lite/v5.json',
+      mark: 'bar',
+      data: { values: [{ a: 1 }] },
+    });
+    expect(() => scanSecurity('vega-lite', spec, MAX)).not.toThrow();
+  });
   it('falls back to a scheme scan when the JSON is malformed', () =>
     expectReject('vega', '{ not valid json https://evil.test/x }'));
 });
