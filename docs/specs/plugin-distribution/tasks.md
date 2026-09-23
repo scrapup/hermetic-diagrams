@@ -273,9 +273,12 @@ working.
 no step that contradicts what TF-78-04 validated.
 
 ##### 5. Definition of Done
-- [ ] Copilot CLI install instructions present and accurate.
-- [ ] Stale "build from source" note corrected to reflect the `dist` branch mechanism.
-- [ ] Every documented command matches what was actually validated in TF-78-04.
+- [x] Copilot CLI install instructions present (`copilot plugin marketplace add` / `copilot plugin
+      install`, confirmed as real Copilot CLI subcommands against official docs).
+- [x] Stale "build from source" note corrected to reflect the `dist` branch mechanism.
+- [ ] **Not yet empirically validated** — brought forward from its original post-merge slot at the
+      user's request; commands are documented as correct per the CLI reference, not as confirmed
+      working end-to-end. TF-78-04 remains the empirical check once a real release publishes `dist`.
 
 ---
 
