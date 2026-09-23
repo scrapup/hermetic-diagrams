@@ -1,0 +1,23 @@
+{
+  "name": "hermetic-diagrams",
+  "version": "0.3.1",
+  "description": "Hermetic, anti-exfiltration MCP for rendering diagrams offline — the diagram source never leaves your environment.",
+  "author": {
+    "name": "Marco Antonio Luqueti Faustino"
+  },
+  "homepage": "https://github.com/scrapup/hermetic-diagrams#readme",
+  "repository": "https://github.com/scrapup/hermetic-diagrams",
+  "license": "MIT",
+  "keywords": [
+    "mcp",
+    "diagrams",
+    "plantuml",
+    "c4",
+    "kroki",
+    "offline",
+    "security",
+    "anti-exfiltration",
+    "hermetic"
+  ],
+  "mcpServers": "./.mcp.json"
+}
