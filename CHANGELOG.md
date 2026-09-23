@@ -4,6 +4,14 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.1](https://github.com/scrapup/hermetic-diagrams/compare/v0.3.0...v0.3.1) (2026-09-23)
+
+
+### Bug Fixes
+
+* dist-branch publish job fails on git add of ignored paths ([#7](https://github.com/scrapup/hermetic-diagrams/issues/7)) ([6970e4d](https://github.com/scrapup/hermetic-diagrams/commit/6970e4db37e807a0885c0a50217f54f37a31f748))
+* git add explicitly-ignored paths breaks the dist-branch publish job ([7441587](https://github.com/scrapup/hermetic-diagrams/commit/7441587cb4a4422ee0b27829d06c009ab2618e94))
+
 ## [0.3.0](https://github.com/scrapup/hermetic-diagrams/compare/v0.2.0...v0.3.0) (2026-09-23)
 
 
