@@ -241,9 +241,16 @@ beyond the documented install commands.
 **4.6 Exit criteria:** confirmed working install on both channels from a real published release.
 
 ##### 5. Definition of Done
-- [ ] Claude Code install confirmed working end-to-end, no manual step.
-- [ ] Copilot CLI install confirmed working end-to-end, no manual step.
-- [ ] Any fix required by this test is applied and re-validated (not left as a known issue).
+- [x] Claude Code install confirmed working end-to-end, no manual step. Real run against v0.3.1
+      (`dist` branch published by the fixed `publish-dist-branch` job, TF-78-01/PR #7): `/plugin
+      marketplace add scrapup/hermetic-diagrams` → `/plugin install hermetic-diagrams` →
+      `containment_status` returned `{"contained":true,"checks":{"krokiHealth":"pass",
+      "egressSelfCheck":"pass","canaryRender":"pass","krokiSafeMode":"SECURE",
+      "publishedPorts":"none"}}` → `render_diagram` (plantuml→svg) succeeded. No `dist/` build step
+      was ever run manually — `${CLAUDE_PLUGIN_ROOT}` resolved correctly on Claude Code.
+- [ ] Copilot CLI install **not yet tested**.
+- [x] The one fix this test surfaced (the `git add` pathspec bug in `publish-dist-branch`, unrelated
+      to `${CLAUDE_PLUGIN_ROOT}`) was applied and re-validated — see PR #7.
 
 ---
 
