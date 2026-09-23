@@ -123,9 +123,14 @@ keep it that way.
 and the rest of the compiled output alongside the source tree.
 
 ##### 5. Definition of Done
-- [ ] `dist` branch is created/force-pushed only after `npm publish` succeeds.
-- [ ] A failed build/publish leaves the previous `dist` branch state untouched.
-- [ ] No workflow triggers on pushes to `dist` (loop-free, verified).
+- [x] `dist` branch is created/force-pushed only after `npm publish` succeeds (implemented in
+      `release-please.yml`'s `publish-dist-branch` job, gated on `needs.release-please.outputs.release_created`).
+- [x] A failed build/publish leaves the previous `dist` branch state untouched (the force-push is
+      the job's last step; a build failure before it stops the job without touching `dist`).
+- [x] No workflow triggers on pushes to `dist` (verified: `ci.yml`, `pr-title.yml`,
+      `release-please.yml` only listen on `main`/PRs).
+- [ ] **Not yet verified against a real release** — this is TF-78-04's job (no release has run
+      with this workflow yet).
 
 ---
 
@@ -156,6 +161,17 @@ with a clear permission error.
 - [ ] Branch protection rule applied to `dist`.
 - [ ] Manual push to `dist` confirmed rejected.
 - [ ] Release workflow confirmed still able to push (not locked out by its own rule).
+
+**Status: deferred, not attempted via API.** GitHub's repository-ruleset API has no documented
+`actor_id` for the built-in "GitHub Actions" app as an `Integration` bypass actor — a real attempt
+(`actor_id: 15368`, a commonly-cited value in public examples) was rejected
+(`422: Actor GitHub Actions integration must be part of the ruleset source or owner organization`),
+and no other well-known ID is documented for this case
+([github/rest-api-description#4406](https://github.com/github/rest-api-description/issues/4406)
+confirms only `OrganizationAdmin` (`1`) and `DeployKey` (`null`) are documented). Guessing further
+risked silently locking the release workflow out of its own `dist` push (TF-78-01, P0) with no way
+to verify short of running a real release. Left as a **manual step via the GitHub Settings UI**
+(which has a reliable "GitHub Actions" picker) — not blocking TF-78-01/03/04/05.
 
 ---
 
@@ -190,9 +206,10 @@ correctness against the fields documented in `plan.md` §3.2/§3.3.
 present and pointing at `.mcp.json`.
 
 ##### 5. Definition of Done
-- [ ] `marketplace.json` plugin entry uses the structured `source` with `ref: "dist"`.
-- [ ] `plugin.json` declares `mcpServers` explicitly.
-- [ ] `claude plugin validate .` passes.
+- [x] `marketplace.json` plugin entry uses the structured `source` with `ref: "dist"`.
+- [x] `plugin.json` declares `mcpServers` explicitly — already present from an earlier task
+      (TF-77-04), no change needed here.
+- [x] `claude plugin validate .` passes.
 
 ---
 
@@ -267,3 +284,11 @@ no step that contradicts what TF-78-04 validated.
 Recommended order: TF-78-01 → TF-78-02 (parallelizable with TF-78-03) → TF-78-03 → TF-78-04 →
 TF-78-05. TF-78-04 is the gating task — nothing about `${CLAUDE_PLUGIN_ROOT}` compatibility with
 Copilot CLI is assumed until it runs against a real release.
+
+**First execution pass (this PR):** TF-78-01 and TF-78-03 implemented and locally verified
+(YAML/JSON valid, `claude plugin validate .` passes). TF-78-02 deferred — not attempted via API,
+left as a manual GitHub Settings UI step (see its Definition of Done for why). TF-78-04 and
+TF-78-05 intentionally **not** started: they require a real release to have published the `dist`
+branch first, which cannot happen before this PR merges. Follow-up after the first successful
+release: run TF-78-04's smoke test on both channels, then TF-78-05's README update reflecting
+what was actually confirmed.
