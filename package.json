@@ -1,0 +1,76 @@
+{
+  "name": "@scrapup/hermetic-diagrams",
+  "version": "0.1.0",
+  "description": "Hermetic, anti-exfiltration MCP for rendering diagrams offline — the diagram source never leaves your environment.",
+  "keywords": [
+    "mcp",
+    "diagrams",
+    "plantuml",
+    "c4",
+    "kroki",
+    "offline",
+    "security",
+    "anti-exfiltration",
+    "hermetic"
+  ],
+  "homepage": "https://github.com/scrapup/hermetic-diagrams#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/scrapup/hermetic-diagrams.git"
+  },
+  "bugs": {
+    "url": "https://github.com/scrapup/hermetic-diagrams/issues"
+  },
+  "license": "MIT",
+  "author": "Marco Antonio Luqueti Faustino",
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "bin": {
+    "hermetic-diagrams": "dist/cli/bin.js"
+  },
+  "files": [
+    "dist",
+    "compose.yaml",
+    "images.lock",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "test": "vitest run --project unit",
+    "test:watch": "vitest --project unit",
+    "test:coverage": "vitest run --project unit --coverage",
+    "test:golden": "vitest run --project golden",
+    "test:integration": "vitest run --project integration",
+    "start": "node dist/index.js",
+    "prepublishOnly": "npm run build && npm run lint && npm run test && npm run test:golden"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.20.0",
+    "@xmldom/xmldom": "^0.9.8",
+    "zod": "^3.25.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.37.0",
+    "@types/node": "^24.0.0",
+    "@typescript-eslint/eslint-plugin": "^8.45.0",
+    "@typescript-eslint/parser": "^8.45.0",
+    "@vitest/coverage-v8": "^3.2.0",
+    "eslint": "^9.37.0",
+    "typescript": "^5.9.0",
+    "vitest": "^3.2.0"
+  },
+  "allowScripts": {
+    "esbuild@0.28.1": true
+  }
+}
