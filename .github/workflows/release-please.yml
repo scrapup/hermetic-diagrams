@@ -3,6 +3,11 @@ name: release-please
 on:
   push:
     branches: [main]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Existing release tag to (re)publish to npm, e.g. v0.2.0. Use when a GitHub Release/tag already exists but the npm publish step failed (e.g. a token permission fix) — skips release-please entirely.'
+        required: true
 
 permissions:
   contents: write
@@ -11,6 +16,7 @@ permissions:
 
 jobs:
   release-please:
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     steps:
       # 1. Open/update the Release PR (bumps package.json + plugin.json/marketplace.json +
@@ -41,5 +47,29 @@ jobs:
 
       - run: npm publish
         if: ${{ steps.release.outputs.release_created }}
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+  # Manual escape hatch (workflow_dispatch): re-attempt the npm publish for a tag whose
+  # GitHub Release was already created but the publish step failed (e.g. the NPM_TOKEN lacked
+  # permission to create a new package). Does not touch release-please state — the tag/Release
+  # must already exist.
+  publish-existing-tag:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          registry-url: https://registry.npmjs.org
+          cache: npm
+
+      - run: npm ci
+
+      - run: npm publish
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
