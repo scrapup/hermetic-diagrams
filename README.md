@@ -73,9 +73,19 @@ Linux. Node.js is only needed if you install via npm.
 ```
 
 This registers the MCP server (`.mcp.json`) pointing at the packaged bin
-(`${CLAUDE_PLUGIN_ROOT}/dist/cli/bin.js`). When installing from source (git), build the plugin
-first so `dist/` exists: `npm ci && npm run build` in the plugin directory (the npm package ships
-`dist/` prebuilt).
+(`${CLAUDE_PLUGIN_ROOT}/dist/cli/bin.js`). The plugin listing resolves to the repository's `dist`
+branch — a build snapshot the release process publishes on every successful release — so the
+installed plugin ships `dist/` prebuilt with no manual build step.
+
+### As a GitHub Copilot CLI plugin
+
+```
+copilot plugin marketplace add scrapup/hermetic-diagrams
+copilot plugin install hermetic-diagrams
+```
+
+Reads the same `.claude-plugin/marketplace.json` as the Claude Code install above, including the
+`dist`-branch resolution — no manual build step there either.
 
 ### As an npm package
 
