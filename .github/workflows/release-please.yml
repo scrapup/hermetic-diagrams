@@ -12,6 +12,9 @@ permissions:
 jobs:
   release-please:
     runs-on: ubuntu-latest
+    outputs:
+      release_created: ${{ steps.release.outputs.release_created }}
+      tag_name: ${{ steps.release.outputs.tag_name }}
     steps:
       # 1. Open/update the Release PR (bumps package.json + plugin.json/marketplace.json +
       #    CHANGELOG) and, once that PR is merged, create the tag and the GitHub Release.
@@ -43,3 +46,39 @@ jobs:
         if: ${{ steps.release.outputs.release_created }}
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+  # 3. Publish the built artifact to the orphan `dist` branch, so marketplace installs (Claude
+  #    Code, Copilot CLI — TF-78-01, docs/specs/plugin-distribution/) get a ready-to-run plugin
+  #    with no manual build step. Runs strictly after `npm publish` has already succeeded — a
+  #    failed build/publish never touches `dist`, so the last intact snapshot stays available
+  #    (RN-02/RN-04). `dist` matches no `push` trigger in this repo's workflows, so this cannot
+  #    loop back into CI.
+  publish-dist-branch:
+    needs: release-please
+    if: ${{ needs.release-please.outputs.release_created }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.release-please.outputs.tag_name }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+
+      - run: npm ci --ignore-scripts
+
+      - run: npm run build
+
+      - name: Force-push the built snapshot to the dist branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout --orphan dist
+          git add -A -- . ':!dist' # the tag's tree, minus dist/ (added next with -f below)
+          git add -f dist
+          git commit -m "chore: dist snapshot for ${{ needs.release-please.outputs.tag_name }}"
+          git push --force origin dist
