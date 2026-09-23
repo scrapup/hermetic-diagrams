@@ -4,6 +4,27 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0](https://github.com/scrapup/hermetic-diagrams/compare/v0.1.0...v0.2.0) (2026-09-23)
+
+
+### Features
+
+* Claude Code plugin and marketplace manifests + MCP server declaration (TF-77-04) ([3c1d7c2](https://github.com/scrapup/hermetic-diagrams/commit/3c1d7c213c0f144236c5daa77b449aa8056c5727))
+* CLI/bin — Docker lifecycle orchestration (up/serve/down/pull) (TF-76-01) ([c11fdea](https://github.com/scrapup/hermetic-diagrams/commit/c11fdeab48868f585f8b5b06f434f5b0d6788d73))
+* contained Docker stack — internal network, pinned Kroki core, MCP gateway image (TF-72-02/03) ([68176a1](https://github.com/scrapup/hermetic-diagrams/commit/68176a150d3de48b100366cde0118bb5a17fd20f))
+* contained render pipeline, Kroki client, SVG sanitizer, concurrency and MCP tools (US-75) ([40fc4fe](https://github.com/scrapup/hermetic-diagrams/commit/40fc4fee56441b4451b609d5a88d18be83d1f20d))
+* MVP hermetic-diagrams — MCP de renderização de diagramas sem exfiltração ([#1](https://github.com/scrapup/hermetic-diagrams/issues/1)) ([0033462](https://github.com/scrapup/hermetic-diagrams/commit/003346238c1f8b7ee6326923bce098919e824210))
+* PEP format/syntax validation and per-notation security scanner (US-74) ([1a198b1](https://github.com/scrapup/hermetic-diagrams/commit/1a198b1e841d704e7a22e67433550cd03127b452))
+* runtime containment proof — egress self-check, canary, boot gate (US-73) ([e0dcf01](https://github.com/scrapup/hermetic-diagrams/commit/e0dcf0142f8f34a38bb91a3a394ae54e1b395d2e))
+
+
+### Bug Fixes
+
+* address re-review — timeout races body read, fail-closed on unreachable canary sink, TOO_LARGE symmetry, doc NOT_CONTAINED ([271d3b0](https://github.com/scrapup/hermetic-diagrams/commit/271d3b03d99617addde20f44052acab584b9143f))
+* allow Vega/Vega-Lite $schema metadata URL in the security scanner (US-74) ([6ef5a50](https://github.com/scrapup/hermetic-diagrams/commit/6ef5a5069b94e702bba41c17444ea3b93e33ca0d))
+* enforce size gate first, cover response-body read with the render timeout, map Kroki 4xx to INVALID_SYNTAX ([a761cd7](https://github.com/scrapup/hermetic-diagrams/commit/a761cd7e0e18b96dcd10474f53c1bb78830a6003))
+* make the boot canary non-vacuous via an internal instrumented sink (zero-hit assertion) ([71d7505](https://github.com/scrapup/hermetic-diagrams/commit/71d7505f55320d64d10a0ad15d1169b822bdb4f8))
+
 ## [Unreleased]
 
 ### Added
