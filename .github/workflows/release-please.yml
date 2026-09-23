@@ -80,7 +80,19 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git checkout --orphan dist
-          git add -A -- . ':!dist' # the tag's tree, minus dist/ (added next with -f below)
+          # `git add -A .` (or any pathspec naming `dist`, even to exclude it) fails outright
+          # because `dist` is gitignored — Git rejects an explicitly-referenced ignored path
+          # instead of silently skipping it. Add the top-level entries by shell expansion
+          # instead, so `dist` is never named in this add, then force-add it separately.
           git add -f dist
+          shopt -s dotglob
+          for entry in *; do
+            [ "$entry" = ".git" ] && continue
+            [ "$entry" = "dist" ] && continue # already force-added above; once staged, check-ignore
+                                               # no longer reports it as ignored, so this explicit
+                                               # skip must come before the check-ignore call below
+            git check-ignore -q "$entry" && continue # node_modules, coverage, ...
+            git add "$entry"
+          done
           git commit -m "chore: dist snapshot for $TAG_NAME"
           git push --force origin dist
