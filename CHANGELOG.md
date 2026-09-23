@@ -4,6 +4,20 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0](https://github.com/scrapup/hermetic-diagrams/compare/v0.2.0...v0.3.0) (2026-09-23)
+
+
+### Features
+
+* build and force-push the dist branch on release (TF-78-01) ([3a59ef8](https://github.com/scrapup/hermetic-diagrams/commit/3a59ef8f4c81075cef1dd6b6545c0142153be9d2))
+* point the marketplace plugin source at the dist branch (TF-78-03) ([9679e2f](https://github.com/scrapup/hermetic-diagrams/commit/9679e2f76562f00903051b0f097cbd7314eabed4))
+* reliable plugin installation across AI-assistant marketplaces (US-78) ([#5](https://github.com/scrapup/hermetic-diagrams/issues/5)) ([c5db912](https://github.com/scrapup/hermetic-diagrams/commit/c5db912b62780009c3d8451ac264f07e7b1ab2e1))
+
+
+### Bug Fixes
+
+* pin release actions by SHA and avoid raw expression interpolation in shell ([3143b10](https://github.com/scrapup/hermetic-diagrams/commit/3143b102dca82d7a12c2b2b29fc5d2dd060111a6))
+
 ## [0.2.0](https://github.com/scrapup/hermetic-diagrams/compare/v0.1.0...v0.2.0) (2026-09-23)
 
 
