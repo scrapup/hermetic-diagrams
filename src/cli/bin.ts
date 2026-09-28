@@ -1,45 +1,45 @@
 #!/usr/bin/env node
-import { spawn, type StdioOptions } from 'node:child_process';
+import { existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import { parseCommand, type CliCommand } from './args.js';
+import { serve, up, type CliContext, type StdioMode } from './commands.js';
+import { captureProcess, runProcess } from './docker-runner.js';
+import { readPackageVersion } from './version.js';
 
 /**
- * CLI/bin (TF-76-01). Orchestrates the Docker lifecycle only — it never processes diagram source
- * and makes no network call beyond invoking Docker. Cross-platform (Docker Desktop/WSL2 on
- * Windows). The MCP client runs this bin as the server command with no args → `serve`, which brings
- * Kroki up and attaches the client's stdio to an ephemeral gateway container.
+ * CLI/bin (TF-76-01, TF-79-03/04). Thin dispatcher: orchestration lives in `commands.ts`. It
+ * orchestrates the Docker lifecycle only — it never processes diagram source and makes no network
+ * call beyond invoking Docker. Cross-platform (Docker Desktop/WSL2 on Windows).
  *
- * stdout is the MCP JSON-RPC channel during `serve`, so setup output is sent to stderr.
+ * The AI assistant runs this bin (through npx) with no args → `serve`. The user runs `up` once per
+ * version. stdout is the MCP JSON-RPC channel during `serve`, so setup output goes to stderr.
  */
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
-// Installed layout: <pkg>/dist/cli/bin.js and <pkg>/compose.yaml.
-const COMPOSE_FILE = path.resolve(HERE, '..', '..', 'compose.yaml');
+// Installed layout: <pkg>/dist/cli/bin.js, <pkg>/compose.yaml, <pkg>/package.json.
+const PACKAGE_ROOT = path.resolve(HERE, '..', '..');
+const COMPOSE_ARGS = ['compose', '-f', path.join(PACKAGE_ROOT, 'compose.yaml')] as const;
 
-function runDocker(args: readonly string[], stdio: StdioOptions): Promise<number> {
-  return new Promise((resolve) => {
-    const child = spawn('docker', ['compose', '-f', COMPOSE_FILE, ...args], { stdio });
-    child.on('error', (err) => {
-      process.stderr.write(`hermetic-diagrams: failed to run docker (${err.message}). Is Docker installed and running?\n`);
-      resolve(127);
-    });
-    child.on('close', (code) => resolve(code ?? 0));
-  });
+function log(line: string): void {
+  process.stderr.write(`hermetic-diagrams: ${line}\n`);
 }
 
-/** Bring Kroki up (pulling by digest on first run); progress goes to stderr, never stdout. */
-async function ensureKrokiUp(): Promise<number> {
-  process.stderr.write('hermetic-diagrams: starting the contained rendering stack…\n');
-  // Pipe stdout→stderr so first-run pull progress never corrupts the MCP stream.
-  return runDocker(['up', '-d', 'kroki'], ['inherit', process.stderr, 'inherit']);
-}
-
-async function serve(): Promise<number> {
-  const up = await ensureKrokiUp();
-  if (up !== 0) return up;
-  // Attach the client's stdio to an ephemeral gateway container.
-  return runDocker(['run', '-T', '--rm', 'mcp'], 'inherit');
+function context(version: string): CliContext {
+  const env = { ...process.env, HD_VERSION: version };
+  return {
+    version,
+    composeArgs: COMPOSE_ARGS,
+    docker: (args: readonly string[], mode: StdioMode) =>
+      runProcess('docker', args, {
+        env,
+        // setup: pipe stdout→stderr so pull/build progress never corrupts the MCP stream.
+        stdio: mode === 'attach' ? 'inherit' : ['ignore', process.stderr, 'inherit'],
+      }),
+    capture: (args, timeoutMs) => captureProcess('docker', args, { env, timeoutMs }),
+    log,
+    distPresent: () => existsSync(path.join(PACKAGE_ROOT, 'dist', 'index.js')),
+  };
 }
 
 function printHelp(): void {
@@ -50,8 +50,8 @@ function printHelp(): void {
       'Usage: hermetic-diagrams [command]',
       '',
       'Commands:',
-      '  serve   (default) bring up Kroki and serve the MCP over stdio',
-      '  up      start the contained stack (kroki) in the background',
+      '  serve   (default) attach the MCP over stdio to the prepared version',
+      '  up      prepare this version once: pull Kroki, build the MCP image, start and wait healthy',
       '  down    stop the stack and remove volumes',
       '  pull    pre-pull the pinned images by digest',
       '  help    show this help',
@@ -61,18 +61,20 @@ function printHelp(): void {
 }
 
 async function dispatch(command: CliCommand): Promise<number> {
+  if (command === 'help') {
+    printHelp();
+    return 0;
+  }
+  const ctx = context(readPackageVersion(PACKAGE_ROOT));
   switch (command) {
     case 'serve':
-      return serve();
+      return serve(ctx);
     case 'up':
-      return runDocker(['up', '-d', 'kroki'], 'inherit');
+      return up(ctx);
     case 'down':
-      return runDocker(['down', '-v'], 'inherit');
+      return ctx.docker([...COMPOSE_ARGS, 'down', '-v'], 'setup');
     case 'pull':
-      return runDocker(['pull'], 'inherit');
-    case 'help':
-      printHelp();
-      return 0;
+      return ctx.docker([...COMPOSE_ARGS, 'pull', '--ignore-buildable'], 'setup');
   }
 }
 
@@ -82,6 +84,6 @@ dispatch(command)
     process.exitCode = code;
   })
   .catch((err: unknown) => {
-    process.stderr.write(`hermetic-diagrams: ${err instanceof Error ? err.message : 'unexpected error'}\n`);
+    log(err instanceof Error ? err.message : 'unexpected error');
     process.exitCode = 1;
   });
