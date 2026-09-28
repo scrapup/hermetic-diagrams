@@ -134,6 +134,29 @@ a executar — ele nunca fica travado até o assistente estourar o timeout.
 
 Para parar a stack e remover os volumes, use o mesmo pacote e versão, trocando `up` por `down`.
 
+### 3. Atualizar para uma nova versão
+
+Cada release do plugin fixa uma nova versão do pacote, então a atualização tem dois passos:
+atualizar o plugin e depois preparar a nova versão com o `up`.
+
+**Claude Code** — atualize o catálogo do marketplace, atualize o plugin e reinicie o Claude Code:
+
+```
+claude plugin marketplace update hermetic-diagrams
+claude plugin update hermetic-diagrams@hermetic-diagrams
+```
+
+**GitHub Copilot CLI** — atualize os catálogos dos marketplaces e depois o plugin:
+
+```
+copilot plugin marketplace update
+copilot plugin update hermetic-diagrams
+```
+
+Em seguida, rode o `up` da nova versão, como no passo 2. Se esse passo for pulado, o servidor para
+no primeiro start e o log dele mostra o comando `up` exato com a nova versão. **Qualquer outro
+cliente MCP:** troque a versão na configuração do launcher e rode o `up` dela.
+
 ## Uso — tools do MCP
 
 ### `render_diagram`

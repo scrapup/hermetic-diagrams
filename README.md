@@ -132,6 +132,29 @@ to run — it never hangs until the assistant times out.
 Stop the stack and remove its volumes with the same package and version, replacing `up` with
 `down`.
 
+### 3. Upgrade to a new version
+
+Each plugin release pins a new package version, so upgrading takes two steps: update the plugin,
+then prepare the new version with `up`.
+
+**Claude Code** — refresh the marketplace catalog, update the plugin, then restart Claude Code:
+
+```
+claude plugin marketplace update hermetic-diagrams
+claude plugin update hermetic-diagrams@hermetic-diagrams
+```
+
+**GitHub Copilot CLI** — refresh the marketplace catalogs, then update the plugin:
+
+```
+copilot plugin marketplace update
+copilot plugin update hermetic-diagrams
+```
+
+Then run `up` for the new version, as in step 2. If you skip it, the server stops at its first
+start and its log shows the exact `up` command with the new version. **Any other MCP client:**
+change the version in the launcher configuration and run `up` for it.
+
 ## Usage — MCP tools
 
 ### `render_diagram`

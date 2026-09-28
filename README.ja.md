@@ -134,6 +134,30 @@ npx @scrapup/hermetic-diagrams@0.3.1 up
 スタックを停止してボリュームを削除するには、同じパッケージとバージョンで `up` を `down` に置き換えて
 実行します。
 
+### 3. 新しいバージョンへのアップグレード
+
+プラグインのリリースごとに新しいパッケージバージョンが固定されるため、アップグレードは 2 ステップ
+です。プラグインを更新し、その後 `up` で新しいバージョンを準備します。
+
+**Claude Code** — マーケットプレイスのカタログを更新し、プラグインを更新してから Claude Code を
+再起動します。
+
+```
+claude plugin marketplace update hermetic-diagrams
+claude plugin update hermetic-diagrams@hermetic-diagrams
+```
+
+**GitHub Copilot CLI** — マーケットプレイスのカタログを更新してから、プラグインを更新します。
+
+```
+copilot plugin marketplace update
+copilot plugin update hermetic-diagrams
+```
+
+その後、ステップ 2 と同様に新しいバージョンの `up` を実行してください。省略した場合、サーバーは
+初回起動時に停止し、そのログに新しいバージョンの正確な `up` コマンドが表示されます。
+**その他の MCP クライアント:** ランチャー設定のバージョンを変更し、そのバージョンの `up` を実行します。
+
 ## 使い方 — MCP ツール
 
 ### `render_diagram`
