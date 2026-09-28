@@ -34,7 +34,7 @@ alt not prepared / prerequisite missing
   CLI --> AI : stderr: "run: npx @scrapup/hermetic-diagrams@<version> up"; exit != 0 (< 240 s)
 else prepared
   CLI -> D : compose up -d --wait --pull never --no-build kroki
-  CLI -> D : compose run -T --rm --pull never --no-build mcp
+  CLI -> D : compose run -T --rm --pull never mcp
   D -> MCP : start (stdio attached)
   MCP -> K : boot gate (egress self-check, canary)
   alt contained

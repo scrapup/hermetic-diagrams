@@ -14,7 +14,7 @@
     image for this version, start Kroki and wait for `healthy` (RN-03, RN-04).
   - **`serve`** (assistant-run, every session) runs a **time-boxed preflight** and fails fast with
     the exact `up` command when anything is missing; otherwise it attaches stdio to the prepared
-    image with `--pull never --no-build` (RN-05).
+    image with `--pull never` (and `--no-build` on `up`; `compose run` has no such flag, so image presence is enforced by the preflight) (RN-05).
   - The MCP image tag carries the package version, `hermetic-diagrams-mcp:<version>` (RN-06).
 - **Client-side build:** the published package ships a **slim `Dockerfile`** that copies the
   prebuilt `dist/` and installs production deps from a shipped lockfile (RN-07).
@@ -109,7 +109,7 @@ No REST or messaging. The contract is the CLI surface and its exit codes.
 | Command | Behaviour | Exit |
 |---|---|---|
 | `up` | preflight (runtime, OSType) → `compose pull kroki` → `compose build mcp` → `compose up -d --wait --wait-timeout <N> kroki` | `0` ready; `≠0` failing step named on stderr |
-| `serve` (default) | preflight (runtime, OSType, `image inspect hermetic-diagrams-mcp:<v>`, Kroki digest present) → `compose up -d --wait --pull never --no-build kroki` → `compose run -T --rm --pull never --no-build mcp` | child's exit code; `≠0` with fix-it message when not prepared |
+| `serve` (default) | preflight (runtime, OSType, Compose ≥ 2.24, `image inspect` of the images from `compose config --images` **plus** `hermetic-diagrams-mcp:<v>`, which compose omits because the gateway sits behind a profile) → `compose up -d --wait --pull never --no-build kroki` → `compose run -T --rm --pull never mcp` | child's exit code; `≠0` with fix-it message when not prepared |
 | `down` / `pull` / `help` | Unchanged | — |
 
 **Fix-it message (stderr, single line):**

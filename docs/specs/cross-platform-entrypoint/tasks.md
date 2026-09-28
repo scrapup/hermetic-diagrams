@@ -75,7 +75,7 @@ Rules:
 | T-06 | integration | `test/helpers/compose.ts` passes `HD_VERSION`; existing golden + integration suites green | TF-79-01 |
 | T-07 | integration | MCP image builds from an extracted `npm pack` tarball (no `src/`, no checkout) | TF-79-02 |
 | T-08 | integration | built image runs as `node`, exposes no ports, has no `src/` | TF-79-02 |
-| T-09 | unit | `npm pack --dry-run --json` file list includes `Dockerfile`, `.dockerignore`, `npm-shrinkwrap.json`, `dist/cli/bin.js`; excludes `src/`, tests | TF-79-02 |
+| T-09 | unit | `package.json` `files` ships `dist`, `compose.yaml`, `Dockerfile`, `.dockerignore`, `npm-shrinkwrap.json`; excludes `src`, tests, tsconfig; `.dockerignore` keeps `dist` (the real tarball is covered by T-07) | TF-79-02 |
 | T-10 | unit | `docker-runner`: exit code passthrough, spawn `error` → 127, timeout kills child → timeout code, capture mode returns stdout | TF-79-03 |
 | T-11 | unit | preflight: Docker unreachable → reason + hint | TF-79-03 |
 | T-12 | unit | preflight: `OSType` = `windows` → Linux-containers hint | TF-79-03 |
@@ -87,8 +87,8 @@ Rules:
 | T-18 | integration | `up` on a clean Docker state → exit 0, Kroki `healthy`, image `:<v>` present; second `up` → exit 0 | TF-79-03 |
 | T-19 | unit | `serve` not prepared (MCP image missing) → fix-it line with exact version, exit ≠ 0, no `up`/`run` spawn | TF-79-04 |
 | T-20 | unit | `serve` Kroki image missing → same fix-it path | TF-79-04 |
-| T-21 | unit | `serve` prepared → `up -d --wait --pull never --no-build kroki` then `run -T --rm --pull never --no-build mcp` | TF-79-04 |
-| T-22 | unit | no `serve` spawn ever contains `build`, `pull` (as subcommand) or omits `--pull never` | TF-79-04 |
+| T-21 | unit | `serve` prepared → `up -d --wait --pull never --no-build kroki` then `run -T --rm --pull never mcp` | TF-79-04 |
+| T-22 | unit | no `serve` spawn ever contains `build`, `pull` (as subcommand), `--build`, or omits `--pull never` | TF-79-04 |
 | T-23 | unit | `serve` writes nothing to stdout before `run -T` | TF-79-04 |
 | T-24 | unit | `parseCommand` unchanged: `[]`→serve, `up`, `down`, `pull`, `help`, `-h`, unknown→help (existing `args.spec.ts` kept) | TF-79-03/04 |
 | T-25 | unit | `.mcp.json` `args[2]` === `package.json` version; exact semver (no `latest`, `^`, `~`, `*`) | TF-79-05 |
@@ -96,7 +96,7 @@ Rules:
 | T-27 | unit | launcher: child `exit` code propagated; spawn `error` → 127 | TF-79-05 |
 | T-28 | unit | `release-please-config.json` has the `.mcp.json` `extra-files` entry with the expected `jsonpath` | TF-79-05 |
 | T-29 | unit | `.mcp.json` contains no `${CLAUDE_PLUGIN_ROOT}` and no `"command": "npx"` | TF-79-05 |
-| T-30 | integration | packed tarball installed in a temp dir → `up` → `serve` over stdio → `containment_status` contained, `list_formats` answers | TF-79-06 |
+| T-30 | integration | packed tarball extracted in a temp dir (the CLI needs only Node built-ins) → `up` → `serve` over stdio → tools listed, `containment_status` contained; second `up` succeeds | TF-79-06 |
 | T-31 | integration | packed tarball, MCP image removed → `serve` exits ≠ 0 with fix-it line in < 60 s | TF-79-06 |
 | T-32 | golden | existing exfiltration test, unchanged | all G2 |
 | T-33 | manual | Windows + macOS: plugin install → `up` → `/mcp` connected → `containment_status` contained; not-prepared path shows fix-it line | TF-79-06 |
@@ -131,10 +131,10 @@ npm package cannot build the MCP image at all (no `Dockerfile`).
 
 ### Acceptance Criteria
 - [ ] Fresh machine (Linux CI; Windows and macOS manually): install → `npx @scrapup/hermetic-diagrams@<v> up` → assistant connects → `containment_status` contained.
-- [ ] Assistant connects before `up`: one stderr line with the exact `up` command, exit ≠ 0, well under 240 s.
-- [ ] `.mcp.json` carries the exact package version, bumped by release-please; a test blocks drift.
-- [ ] Opening this repo in Claude Code no longer shows a failing `hermetic-diagrams` server.
-- [ ] Golden exfiltration test passes unchanged.
+- [x] Assistant connects before `up`: one stderr line with the exact `up` command, exit ≠ 0, well under 240 s.
+- [x] `.mcp.json` carries the exact package version, bumped by release-please; a test blocks drift.
+- [x] Opening this repo in Claude Code no longer shows a failing `hermetic-diagrams` server.
+- [x] Golden exfiltration test passes unchanged.
 
 ### Applicable Business Rules
 | # | Rule | Type |
@@ -160,7 +160,7 @@ participant "AI assistant" as AI
 AI -> CLI : serve (via node -e launcher)
 CLI -> D : preflight (time-boxed)
 alt prepared
-  CLI -> D : run -T --pull never --no-build mcp
+  CLI -> D : run -T --pull never mcp
 else not prepared
   CLI --> AI : "run: npx @scrapup/hermetic-diagrams@<v> up"
 end
@@ -208,10 +208,10 @@ instead of tagging `:` or `:latest`.
 **4.6 Exit criteria:** unit tests for the three helpers and the invalid-version path pass; no `:dev` left in `compose.yaml`.
 
 ##### 5. Definition of Done
-- [ ] Tests T-01..T-06 implemented and green; regression gates G1 + G2 green (see Test and Regression Strategy).
-- [ ] `version.ts` + tests (valid semver, missing field, non-semver).
-- [ ] Every compose spawn receives `HD_VERSION`.
-- [ ] `compose.yaml` uses `${HD_VERSION:?…}`; `docker compose config` without it fails.
+- [x] Tests T-01..T-06 implemented and green; regression gates G1 + G2 green (see Test and Regression Strategy).
+- [x] `version.ts` + tests (valid semver, missing field, non-semver).
+- [x] Every compose spawn receives `HD_VERSION`.
+- [x] `compose.yaml` uses `${HD_VERSION:?…}`; `docker compose config` without it fails.
 
 ---
 
@@ -251,11 +251,11 @@ git checkout package-lock.json && rm -f npm-shrinkwrap.json   # restore repo loc
 **4.6 Exit criteria:** the image builds from the extracted tarball alone; `npm pack --dry-run` lists `Dockerfile`, `.dockerignore`, `npm-shrinkwrap.json`, `dist/`.
 
 ##### 5. Definition of Done
-- [ ] Tests T-07..T-09 implemented and green; regression gates G1 + G2 + G3 green (see Test and Regression Strategy).
-- [ ] Image builds from the packed artifact in a clean directory.
-- [ ] Image still runs as `node` (non-root), no ports, base pinned by digest.
-- [ ] Release job generates the shrinkwrap before publishing.
-- [ ] Build from a repo checkout (after `npm run build`) still works.
+- [x] Tests T-07..T-09 implemented and green; regression gates G1 + G2 + G3 green (see Test and Regression Strategy).
+- [x] Image builds from the packed artifact in a clean directory.
+- [x] Image still runs as `node` (non-root), no ports, base pinned by digest.
+- [x] Release job generates the shrinkwrap before publishing.
+- [x] Build from a repo checkout (after `npm run build`) still works.
 
 ---
 
@@ -307,10 +307,10 @@ git checkout package-lock.json && rm -f npm-shrinkwrap.json   # restore repo loc
 | RT-04 | Measure and set `UP_WAIT_S`; manual run | recorded in PR | RT-03 |
 
 ##### 5. Definition of Done
-- [ ] Tests T-10..T-18, T-24 implemented and green; regression gates G1 + G2 green (see Test and Regression Strategy).
-- [ ] `up` leaves the MCP image `:<v>` built and Kroki `healthy`, exit 0.
-- [ ] Every failure row yields its message and exit ≠ 0; nothing on stdout.
-- [ ] Re-running `up` on a prepared version succeeds without rebuilding unnecessarily (Compose cache).
+- [x] Tests T-10..T-18, T-24 implemented and green; regression gates G1 + G2 green (see Test and Regression Strategy).
+- [x] `up` leaves the MCP image `:<v>` built and Kroki `healthy`, exit 0.
+- [x] Every failure row yields its message and exit ≠ 0; nothing on stdout.
+- [x] Re-running `up` on a prepared version succeeds without rebuilding unnecessarily (Compose cache).
 
 ---
 
@@ -329,7 +329,7 @@ git checkout package-lock.json && rm -f npm-shrinkwrap.json   # restore repo loc
 - `src/cli/bin.ts` — `serve` = preflight (runtime, OSType, compose version, images) → on failure
   print `hermetic-diagrams: version <v> is not prepared — run: npx @scrapup/hermetic-diagrams@<v> up`
   (or the specific prerequisite message) and exit ≠ 0 → on success
-  `compose up -d --wait --pull never --no-build kroki` → `compose run -T --rm --pull never --no-build mcp`.
+  `compose up -d --wait --pull never --no-build kroki` → `compose run -T --rm --pull never mcp`.
 - `src/cli/bin.spec.ts` / `preflight.spec.ts` — prepared vs not-prepared paths.
 
 **2.4 Zero Trust:** `serve` must contain no code path that pulls or builds; `--pull never --no-build`
@@ -342,10 +342,10 @@ on both commands make Compose refuse instead of silently doing it. Preflight tot
 **4.6 Exit criteria:** unit tests prove no pull/build argument ever reaches `serve`'s spawns.
 
 ##### 5. Definition of Done
-- [ ] Tests T-19..T-24 implemented and green; regression gates G1 + G2 green (see Test and Regression Strategy).
-- [ ] Not prepared → fix-it line with the exact version, exit ≠ 0, measured < 60 s.
-- [ ] Prepared → tools available; `containment_status` contained.
-- [ ] Unit test asserts `--pull never --no-build` on every `serve` compose call.
+- [x] Tests T-19..T-24 implemented and green; regression gates G1 + G2 green (see Test and Regression Strategy).
+- [x] Not prepared → fix-it line with the exact version, exit ≠ 0, measured < 60 s.
+- [x] Prepared → tools available; `containment_status` contained.
+- [x] Unit test asserts `--pull never --no-build` on every `serve` compose call.
 
 ---
 
@@ -376,10 +376,10 @@ versioned file; the guard test blocks any non-semver value.
 **4.6 Exit criteria:** guard test green; `claude plugin validate .` passes.
 
 ##### 5. Definition of Done
-- [ ] Tests T-25..T-29 implemented and green; regression gates G1 + G3 green (see Test and Regression Strategy).
-- [ ] `.mcp.json` uses the launcher with the current version.
-- [ ] release-please bumps `args[2]` (verified with `release-please` dry run or by config review against the existing `extra-files` entries).
-- [ ] Guard test fails on a mismatched or floating version.
+- [x] Tests T-25..T-29 implemented and green; regression gates G1 + G3 green (see Test and Regression Strategy).
+- [x] `.mcp.json` uses the launcher with the current version.
+- [x] release-please bumps `args[2]` (verified with `release-please` dry run or by config review against the existing `extra-files` entries).
+- [x] Guard test fails on a mismatched or floating version.
 
 ---
 
@@ -408,9 +408,9 @@ plugin from a pre-release or a locally published version → `npx @scrapup/herme
 **4.6 Exit criteria:** CI `containment` green; manual evidence for Windows and macOS attached.
 
 ##### 5. Definition of Done
-- [ ] Tests T-30..T-33 implemented and green; regression gates G1 + G2 + G3 + G4 green (see Test and Regression Strategy).
-- [ ] Packed-artifact integration test green in CI.
-- [ ] Golden exfiltration test green.
+- [x] Tests T-30..T-33 implemented and green; regression gates G1 + G2 + G3 + G4 green (see Test and Regression Strategy).
+- [x] Packed-artifact integration test green in CI.
+- [x] Golden exfiltration test green.
 - [ ] Windows and macOS manual evidence recorded.
 
 ---
@@ -424,10 +424,10 @@ plugin from a pre-release or a locally published version → `npx @scrapup/herme
 > language with the new `up` flow, **so that** I can install and prepare the service correctly.
 
 ### Acceptance Criteria
-- [ ] `README.md` (EN, source), `README.pt.md`, `README.ja.md` with identical content.
-- [ ] Each starts with the nav line used by `scrapup/README.md`.
-- [ ] Install section describes: channel → `npx @scrapup/hermetic-diagrams@<v> up` → open the assistant; manual registration shows the launcher JSON.
-- [ ] `CLAUDE.md` reflects the real status and commands.
+- [x] `README.md` (EN, source), `README.pt.md`, `README.ja.md` with identical content.
+- [x] Each starts with the nav line used by `scrapup/README.md`.
+- [x] Install section describes: channel → `npx @scrapup/hermetic-diagrams@<v> up` → open the assistant; manual registration shows the launcher JSON.
+- [x] `CLAUDE.md` reflects the real status and commands.
 
 ### Applicable Business Rules
 | # | Rule | Type |
@@ -468,9 +468,9 @@ JSON and command names are identical across languages (only prose is translated)
 **4.6 Exit criteria:** three files, same structure, same code blocks, links resolve.
 
 ##### 5. Definition of Done
-- [ ] Tests T-34 implemented and green; regression gates G1 green (see Test and Regression Strategy).
-- [ ] Three READMEs with nav line and identical structure/code blocks.
-- [ ] Install flow reflects `up` + launcher.
+- [x] Tests T-34 implemented and green; regression gates G1 green (see Test and Regression Strategy).
+- [x] Three READMEs with nav line and identical structure/code blocks.
+- [x] Install flow reflects `up` + launcher.
 
 ---
 
@@ -492,8 +492,8 @@ the `up`/`serve` split, the `.mcp.json` launcher and the rule "never `${CLAUDE_P
 **4.6 Exit criteria:** no statement in `CLAUDE.md` contradicts the repository.
 
 ##### 5. Definition of Done
-- [ ] Tests T-35 implemented and green; regression gates G1 green (see Test and Regression Strategy).
-- [ ] Status and commands current; containment section unchanged.
+- [x] Tests T-35 implemented and green; regression gates G1 green (see Test and Regression Strategy).
+- [x] Status and commands current; containment section unchanged.
 
 ---
 
@@ -502,3 +502,19 @@ the `up`/`serve` split, the `.mcp.json` launcher and the rule "never `${CLAUDE_P
 Recommended order: TF-79-01 → (TF-79-02 ∥ TF-79-03 ∥ TF-79-05) → TF-79-04 → TF-79-06 → TF-80-01 →
 TF-80-02. TF-79-06 is the gate: US-79 is not done without the Windows evidence. The orphan `dist`
 branch simplification stays out of scope (plan §8).
+
+---
+
+## Implementation notes (first execution, branch `feat/US-79-cross-platform-entrypoint`)
+
+| Topic | What happened |
+|---|---|
+| Baseline (`main@22a232c`) | unit 110/110 (coverage 87.36 / 90.4 / 90.62 / 87.36), golden 1/1, integration 16/16 |
+| Final gates | unit 213/213 (coverage ≥ 89.6 on all metrics; `src/cli` 100%), golden 1/1, integration 27/27 (3 files, serial) |
+| Defect found by T-31 | `compose config --images` omits services behind a profile, so the MCP gateway image was never inspected and `compose run` built it inside `serve`. Fixed: `serve` always inspects `hermetic-diagrams-mcp:<v>` (commit `f2048a5`) |
+| `compose run` | Has no `--no-build`; `serve` uses `--pull never` and relies on the preflight for image presence |
+| Compose minimum | 2.24.0, chosen conservatively for `up --wait/--wait-timeout`, `--pull never`, `--no-build`, `run --pull` |
+| `KROKI_WAIT_S` | 180 s — covers the healthcheck window (start_period 20 s + 12 × 10 s). Measured `up` with the Kroki image cached: 8.2 s; a fully cold pull was not measured |
+| Integration parallelism | Vitest 3 has no per-project `fileParallelism`; `test:integration` runs with `--no-file-parallelism` |
+| `pull` command | Now `compose pull --ignore-buildable` (the MCP image is built, never pulled) |
+| Pending | G4 / T-33: manual Windows and macOS evidence; needs a published version (or pre-release) because the launcher resolves the package from npm |
