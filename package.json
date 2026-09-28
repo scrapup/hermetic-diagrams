@@ -33,10 +33,13 @@
   "files": [
     "dist",
     "compose.yaml",
+    "Dockerfile",
     "images.lock",
     "README.md",
     "LICENSE",
-    "CHANGELOG.md"
+    "CHANGELOG.md",
+    ".dockerignore",
+    "npm-shrinkwrap.json"
   ],
   "publishConfig": {
     "access": "public",
@@ -51,7 +54,7 @@
     "test:watch": "vitest --project unit",
     "test:coverage": "vitest run --project unit --coverage",
     "test:golden": "vitest run --project golden",
-    "test:integration": "vitest run --project integration",
+    "test:integration": "vitest run --project integration --no-file-parallelism",
     "start": "node dist/index.js",
     "prepublishOnly": "npm run build && npm run lint && npm run test && npm run test:golden"
   },

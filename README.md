@@ -1,5 +1,7 @@
 # hermetic-diagrams
 
+🌐 **English** | [日本語](./README.ja.md) | [Português](./README.pt.md)
+
 > Hermetic, anti-exfiltration MCP for rendering diagrams offline — the diagram source never leaves
 > your environment.
 
@@ -59,52 +61,99 @@ not even registered unless all gates pass:
 
 ## Requirements
 
-**Docker** (Desktop or Engine; Docker Desktop/WSL2 on Windows). All heavy runtimes live inside a
-pinned Linux image, so the host needs nothing else — the same setup works on Windows, macOS and
-Linux. Node.js is only needed if you install via npm.
+- **Docker** (Desktop or Engine) running **Linux containers**, with Docker Compose 2.24 or newer.
+  On Windows, use Docker Desktop with the WSL 2 backend (Linux containers mode). All heavy runtimes
+  live inside pinned Linux images, so the same setup works on Windows, macOS and Linux.
+- **Node.js 24 or newer**, for `npx`.
 
 ## Install
 
-### As a Claude Code plugin (recommended)
+Two steps, identical on Windows, macOS and Linux: register the server with your AI assistant, then
+prepare it once.
+
+### 1. Register the server
+
+Every channel starts the same thing: the npm package `@scrapup/hermetic-diagrams`, pinned to an
+exact version and run through `npx`.
+
+**Claude Code plugin** (recommended):
 
 ```
 /plugin marketplace add scrapup/hermetic-diagrams
 /plugin install hermetic-diagrams
 ```
 
-This registers the MCP server (`.mcp.json`) pointing at the packaged bin
-(`${CLAUDE_PLUGIN_ROOT}/dist/cli/bin.js`). The plugin listing resolves to the repository's `dist`
-branch — a build snapshot the release process publishes on every successful release — so the
-installed plugin ships `dist/` prebuilt with no manual build step.
-
-### As a GitHub Copilot CLI plugin
+**GitHub Copilot CLI plugin:**
 
 ```
 copilot plugin marketplace add scrapup/hermetic-diagrams
 copilot plugin install hermetic-diagrams
 ```
 
-Reads the same `.claude-plugin/marketplace.json` as the Claude Code install above, including the
-`dist`-branch resolution — no manual build step there either.
+**Any other MCP client** — register the same launcher the plugin uses. It resolves `npx` on every
+OS (`npx.cmd` on Windows) and runs the pinned version:
 
-### As an npm package
-
-```
-npm install -g @scrapup/hermetic-diagrams
-```
-
-Then register it with your MCP client, e.g. Claude Code:
-
+<!-- x-release-please-start-version -->
 ```json
 {
   "mcpServers": {
-    "hermetic-diagrams": { "command": "hermetic-diagrams" }
+    "hermetic-diagrams": {
+      "command": "node",
+      "args": [
+        "-e",
+        "const w=process.platform==='win32',a=['--prefer-offline','-y','@scrapup/hermetic-diagrams@'+process.argv[1]],p=require('node:child_process'),c=w?p.spawn('npx.cmd '+a.join(' '),{stdio:'inherit',shell:true}):p.spawn('npx',a,{stdio:'inherit'});for(const s of['SIGINT','SIGTERM'])process.on(s,()=>c.kill(s));c.on('exit',x=>process.exit(x??1));c.on('error',()=>process.exit(127))",
+        "0.3.1"
+      ]
+    }
   }
 }
 ```
+<!-- x-release-please-end -->
 
-**First run** pulls the pinned images by digest (progress is printed to stderr); subsequent runs
-reuse the already-running Kroki. Bring the stack down with `hermetic-diagrams down`.
+### 2. Prepare it once (per version)
+
+Run this in your own terminal before the first use, and again after each upgrade:
+
+<!-- x-release-please-start-version -->
+```
+npx @scrapup/hermetic-diagrams@0.3.1 up
+```
+<!-- x-release-please-end -->
+
+`up` checks the prerequisites (Docker reachable, Linux containers, Compose version), pulls the
+pinned Kroki image by digest, builds the MCP image for this version on your machine, starts the
+renderer and waits until it is healthy. Progress is printed in the terminal; it exits non-zero
+naming the step that failed.
+
+After that, the AI assistant starts the server in seconds: it never downloads or builds anything.
+If the version is not prepared, the server stops at once and its log shows the exact `up` command
+to run — it never hangs until the assistant times out.
+
+Stop the stack and remove its volumes with the same package and version, replacing `up` with
+`down`.
+
+### 3. Upgrade to a new version
+
+Each plugin release pins a new package version, so upgrading takes two steps: update the plugin,
+then prepare the new version with `up`.
+
+**Claude Code** — refresh the marketplace catalog, update the plugin, then restart Claude Code:
+
+```
+claude plugin marketplace update hermetic-diagrams
+claude plugin update hermetic-diagrams@hermetic-diagrams
+```
+
+**GitHub Copilot CLI** — refresh the marketplace catalogs, then update the plugin:
+
+```
+copilot plugin marketplace update
+copilot plugin update hermetic-diagrams
+```
+
+Then run `up` for the new version, as in step 2. If you skip it, the server stops at its first
+start and its log shows the exact `up` command with the new version. **Any other MCP client:**
+change the version in the launcher configuration and run `up` for it.
 
 ## Usage — MCP tools
 
@@ -170,8 +219,9 @@ core image can rasterize without browser components; for the rest, request SVG.
 - **Local-render notations only.** Notations that need browser components (Mermaid, BPMN,
   Excalidraw) are deferred to a later cycle (RN-05).
 - **PNG for a subset** (see the table). D2/DBML/Vega/Vega-Lite render to SVG only in this cycle.
-- **Online pull on first run** — images are fetched (by digest) once, before the internal network
-  exists. Air-gapped bundles are a later cycle.
+- **Online during `up` only** — the package, the pinned images (by digest) and the MCP image's
+  production dependencies are fetched once per version, before the internal network exists. The
+  running server never uses the network. Air-gapped bundles are a later cycle.
 - **stdio transport only.**
 
 ## License

@@ -1,4 +1,5 @@
 import { execFile } from 'node:child_process';
+import { readFileSync } from 'node:fs';
 import { promisify } from 'node:util';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -10,12 +11,20 @@ export const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url
 export const COMPOSE_FILE = path.join(REPO_ROOT, 'compose.yaml');
 const COMPOSE = ['compose', '-f', COMPOSE_FILE];
 
+/** Package version; compose.yaml tags the MCP image with it (`${HD_VERSION:?}`). */
+export const HD_VERSION = (
+  JSON.parse(readFileSync(path.join(REPO_ROOT, 'package.json'), 'utf8')) as { version: string }
+).version;
+/** Environment for every compose call made by the tests. */
+export const COMPOSE_ENV: NodeJS.ProcessEnv = { ...process.env, HD_VERSION };
+
 export async function compose(
   args: readonly string[],
   timeoutMs = 180_000,
 ): Promise<{ stdout: string; stderr: string }> {
   return execFileAsync('docker', [...COMPOSE, ...args], {
     cwd: REPO_ROOT,
+    env: COMPOSE_ENV,
     timeout: timeoutMs,
     maxBuffer: 32 * 1024 * 1024,
   });
@@ -69,10 +78,18 @@ export async function isNetworkInternal(networkName: string): Promise<boolean> {
 }
 
 /** Command + args to launch an ephemeral MCP gateway container with stdio attached. */
-export function mcpStdioCommand(): { command: string; args: string[]; cwd: string } {
+export function mcpStdioCommand(): {
+  command: string;
+  args: string[];
+  cwd: string;
+  env: Record<string, string>;
+} {
   return {
     command: 'docker',
     args: [...COMPOSE, 'run', '-T', '--rm', 'mcp'],
     cwd: REPO_ROOT,
+    env: Object.fromEntries(
+      Object.entries(COMPOSE_ENV).filter((e): e is [string, string] => e[1] !== undefined),
+    ),
   };
 }

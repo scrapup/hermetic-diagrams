@@ -1,7 +1,6 @@
 .git
 .github
 node_modules
-dist
 coverage
 test
 docs
@@ -17,3 +16,6 @@ CHANGELOG.md
 update.sh
 .claude-plugin
 .mcp.json
+src
+tsconfig*.json
+*.tgz

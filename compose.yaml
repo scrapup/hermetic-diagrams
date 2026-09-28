@@ -44,7 +44,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    image: hermetic-diagrams-mcp:dev
+    # Tagged per package version (RN-06); the CLI always exports HD_VERSION from package.json.
+    image: hermetic-diagrams-mcp:${HD_VERSION:?HD_VERSION is required (run through the hermetic-diagrams CLI)}
     profiles: ["gateway"]
     environment:
       KROKI_BASE_URL: "http://kroki:8000"

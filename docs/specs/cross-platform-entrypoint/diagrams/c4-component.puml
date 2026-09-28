@@ -1,0 +1,30 @@
+@startuml
+!include <C4/C4_Component>
+title C4 N3 - CLI bin components (src/cli)
+
+Container_Ext(launcher, "Launcher", "node -e", "Runs the pinned package via npx")
+Container_Ext(engine, "Container runtime", "docker / docker compose")
+
+Container_Boundary(cli, "CLI bin (@scrapup/hermetic-diagrams)") {
+  Component(bin, "bin.ts", "Entry", "Parses argv, dispatches, maps results to exit codes; stderr only for diagnostics")
+  Component(args, "args.ts", "Parser", "serve | up | down | pull | help (no new command)")
+  Component(version, "version.ts", "Version binding", "Reads package.json version; exports HD_VERSION to compose; builds the fix-it command")
+  Component(preflight, "preflight.ts", "Checks", "Runtime reachable, OSType=linux, image hermetic-diagrams-mcp:<version> and Kroki digest present; each probe time-boxed")
+  Component(docker, "docker-runner.ts", "Process adapter", "spawn docker compose -f <pkg>/compose.yaml with timeout; stdout never on the MCP stream during setup")
+}
+
+Component_Ext(compose, "compose.yaml", "Packaged", "image: hermetic-diagrams-mcp:${HD_VERSION}")
+Component_Ext(dockerfile, "Dockerfile + .dockerignore", "Packaged", "Slim: COPY dist + package.json + npm-shrinkwrap.json; npm ci --omit=dev")
+
+Rel(launcher, bin, "argv: [] (serve) or [up]")
+Rel(bin, args, "parseCommand")
+Rel(bin, version, "HD_VERSION, fix-it command")
+Rel(bin, preflight, "serve / up")
+Rel(preflight, docker, "docker info / image inspect")
+Rel(bin, docker, "pull / build / up --wait / run -T")
+Rel(docker, engine, "spawn")
+Rel(docker, compose, "-f")
+Rel(compose, dockerfile, "build (up only)")
+
+SHOW_LEGEND()
+@enduml
