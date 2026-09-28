@@ -52,22 +52,25 @@ export async function checkCompose(capture: Capture): Promise<PreflightResult> {
 }
 
 /**
- * Every image the compose file references for this version exists locally — never pulls or builds.
- * `composeArgs` is the `compose -f <file>` prefix.
+ * Every image this version needs exists locally — never pulls or builds. `composeArgs` is the
+ * `compose -f <file>` prefix. `required` lists images that `config --images` does not report
+ * (the MCP gateway sits behind the `gateway` profile, so compose omits it from that listing).
  */
 export async function checkImages(
   capture: Capture,
   composeArgs: readonly string[],
+  required: readonly string[],
   hint: string,
 ): Promise<PreflightResult> {
   const list = await capture([...composeArgs, 'config', '--images'], IMAGES_LIST_PROBE_MS);
-  const images = list.stdout
+  const listed = list.stdout
     .split(/\r?\n/)
     .map((l) => l.trim())
     .filter((l) => l !== '');
-  if (list.timedOut || list.code !== 0 || images.length === 0) {
+  if (list.timedOut || list.code !== 0 || listed.length === 0) {
     return fail(`could not resolve the images of this version — ${hint}`);
   }
+  const images = [...new Set([...listed, ...required])];
   const inspect = await capture(
     ['image', 'inspect', '--format', '{{.Id}}', ...images],
     IMAGE_INSPECT_PROBE_MS,

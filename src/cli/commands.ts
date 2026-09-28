@@ -1,6 +1,6 @@
 import type { Capture, PreflightResult } from './preflight.js';
 import { checkCompose, checkImages, checkRuntime, runPreflight } from './preflight.js';
-import { upCommand } from './version.js';
+import { imageRef, upCommand } from './version.js';
 
 /**
  * `up` and `serve` orchestration (TF-79-03/04). `up` does all heavy work once per version;
@@ -74,7 +74,7 @@ export async function serve(ctx: CliContext): Promise<number> {
   const pre = await runPreflight([
     () => checkRuntime(ctx.capture),
     () => checkCompose(ctx.capture),
-    () => checkImages(ctx.capture, ctx.composeArgs, hint),
+    () => checkImages(ctx.capture, ctx.composeArgs, [imageRef(ctx.version)], hint),
   ]);
   if (!pre.ok) return reportFailure(ctx, pre);
 

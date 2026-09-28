@@ -117,6 +117,16 @@ describe('up', () => {
 });
 
 describe('serve', () => {
+  it('inspects the MCP image of its own version even though compose does not list it', async () => {
+    const capture = vi.fn(captureFrom({ images: ok('kroki@sha256:x\n') }));
+    const { ctx } = makeContext({ capture });
+
+    await serve(ctx);
+
+    const inspect = capture.mock.calls.find(([a]) => a[0] === 'image');
+    expect(inspect?.[0]).toContain(`hermetic-diagrams-mcp:${VERSION}`);
+  });
+
   it('starts Kroki without pull/build, then attaches stdio to the gateway', async () => {
     const { ctx, dockerCalls } = makeContext();
 

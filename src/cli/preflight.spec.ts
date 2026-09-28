@@ -113,7 +113,7 @@ describe('checkImages', () => {
   it('passes when every resolved image exists locally', async () => {
     const capture = captureOf(result(0, IMAGES), result(0, 'sha256:1\nsha256:2\n'));
 
-    expect(await checkImages(capture, COMPOSE, HINT)).toEqual({ ok: true });
+    expect(await checkImages(capture, COMPOSE, [], HINT)).toEqual({ ok: true });
     expect(capture).toHaveBeenNthCalledWith(1, [...COMPOSE, 'config', '--images'], IMAGES_LIST_PROBE_MS);
     expect(capture).toHaveBeenNthCalledWith(
       2,
@@ -122,22 +122,40 @@ describe('checkImages', () => {
     );
   });
 
+  it('also inspects required images that config --images does not list (profiled MCP gateway)', async () => {
+    const capture = captureOf(result(0, 'yuzutech/kroki@sha256:abc\n'), result(0));
+
+    await checkImages(capture, COMPOSE, ['hermetic-diagrams-mcp:1.2.3'], HINT);
+
+    expect(capture.mock.calls[1]?.[0]).toEqual([
+      'image', 'inspect', '--format', '{{.Id}}', 'yuzutech/kroki@sha256:abc', 'hermetic-diagrams-mcp:1.2.3',
+    ]);
+  });
+
+  it('does not inspect an image twice when it is both listed and required', async () => {
+    const capture = captureOf(result(0, 'a:1\nmcp:1\n'), result(0));
+
+    await checkImages(capture, COMPOSE, ['mcp:1'], HINT);
+
+    expect(capture.mock.calls[1]?.[0]).toEqual(['image', 'inspect', '--format', '{{.Id}}', 'a:1', 'mcp:1']);
+  });
+
   it('parses CRLF output (Windows)', async () => {
     const capture = captureOf(result(0, 'a:1\r\nb:2\r\n'), result(0));
 
-    await checkImages(capture, COMPOSE, HINT);
+    await checkImages(capture, COMPOSE, [], HINT);
 
     expect(capture.mock.calls[1]?.[0]).toEqual(['image', 'inspect', '--format', '{{.Id}}', 'a:1', 'b:2']);
   });
 
   it('fails with the up hint when an image is missing', async () => {
-    const r = await checkImages(captureOf(result(0, IMAGES), result(1)), COMPOSE, HINT);
+    const r = await checkImages(captureOf(result(0, IMAGES), result(1)), COMPOSE, [], HINT);
 
     expect(r).toEqual({ ok: false, reason: `this version is not prepared — ${HINT}` });
   });
 
   it('fails with the up hint when inspect times out', async () => {
-    const r = await checkImages(captureOf(result(0, IMAGES), result(124, '', true)), COMPOSE, HINT);
+    const r = await checkImages(captureOf(result(0, IMAGES), result(124, '', true)), COMPOSE, [], HINT);
 
     expect(r.ok).toBe(false);
   });
@@ -145,18 +163,18 @@ describe('checkImages', () => {
   it('fails when the image list cannot be resolved', async () => {
     const capture = captureOf(result(1));
 
-    const r = await checkImages(capture, COMPOSE, HINT);
+    const r = await checkImages(capture, COMPOSE, [], HINT);
 
     expect(r).toEqual({ ok: false, reason: `could not resolve the images of this version — ${HINT}` });
     expect(capture).toHaveBeenCalledOnce();
   });
 
   it('fails when the image list is empty', async () => {
-    expect((await checkImages(captureOf(result(0, '\n')), COMPOSE, HINT)).ok).toBe(false);
+    expect((await checkImages(captureOf(result(0, '\n')), COMPOSE, [], HINT)).ok).toBe(false);
   });
 
   it('fails when listing times out', async () => {
-    expect((await checkImages(captureOf(result(124, '', true)), COMPOSE, HINT)).ok).toBe(false);
+    expect((await checkImages(captureOf(result(124, '', true)), COMPOSE, [], HINT)).ok).toBe(false);
   });
 });
 
