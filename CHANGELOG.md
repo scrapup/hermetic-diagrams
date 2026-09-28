@@ -4,6 +4,22 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0](https://github.com/scrapup/hermetic-diagrams/compare/v0.3.1...v0.4.0) (2026-09-28)
+
+
+### Features
+
+* **cli:** version-bound MCP image, one-time up and fail-fast serve ([53a0ebe](https://github.com/scrapup/hermetic-diagrams/commit/53a0ebeb91426b6e197ce982938db78a46fab314))
+* cross-platform npx entry point with one-time up and fail-fast serve (US-79, US-80) ([#10](https://github.com/scrapup/hermetic-diagrams/issues/10)) ([d474c63](https://github.com/scrapup/hermetic-diagrams/commit/d474c63e136afb2b24ea3d25417b04b3c1b1a3e0))
+* **package:** build the MCP image on the client from the published package ([7398d14](https://github.com/scrapup/hermetic-diagrams/commit/7398d14abb390485dc049a741a09aaa6ef4763e2))
+* **plugin:** launch the pinned npm package through a cross-platform node launcher ([3221340](https://github.com/scrapup/hermetic-diagrams/commit/32213403be54fa5a03350d68da53398da5e82075))
+
+
+### Bug Fixes
+
+* **cli:** serve preflight must inspect the profiled MCP gateway image ([f2048a5](https://github.com/scrapup/hermetic-diagrams/commit/f2048a5cee6bea4a869e71cd21fc665e0e32557d))
+* **test:** normalize CRLF in the README consistency test (Windows CI) ([17be0e4](https://github.com/scrapup/hermetic-diagrams/commit/17be0e4c0eebcb94f9b548986f69b8129cde5bf4))
+
 ## [0.3.1](https://github.com/scrapup/hermetic-diagrams/compare/v0.3.0...v0.3.1) (2026-09-23)
 
 
