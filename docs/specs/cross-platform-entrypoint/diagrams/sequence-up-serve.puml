@@ -1,0 +1,46 @@
+@startuml
+title Sequence - one-time up, then serve (success and failure paths)
+
+actor User
+participant "AI assistant" as AI
+participant "Launcher\n(node -e)" as L
+participant "CLI bin\n(npx cache)" as CLI
+participant "Container runtime" as D
+participant "MCP gateway\n:<version>" as MCP
+participant "Kroki" as K
+
+== One-time preparation (user terminal) ==
+User -> CLI : npx @scrapup/hermetic-diagrams@<version> up
+CLI -> D : docker info (OSType)
+alt runtime down or OSType != linux
+  CLI --> User : stderr: prerequisite missing; exit != 0
+else runtime ok
+  CLI -> D : compose pull kroki (by digest)
+  CLI -> D : compose build mcp (HD_VERSION=<version>)
+  CLI -> D : compose up -d --wait --wait-timeout N kroki
+  D -> K : start + healthcheck
+  alt healthy
+    CLI --> User : stderr: ready; exit 0
+  else pull/build fails or health timeout
+    CLI --> User : stderr: failed step; exit != 0
+  end
+end
+
+== Serve (every AI-assistant session) ==
+AI -> L : start server (stdio)
+L -> CLI : npx --prefer-offline -y <pkg>@<version>
+CLI -> D : preflight (time-boxed): docker info, image inspect mcp:<version>, kroki digest
+alt not prepared / prerequisite missing
+  CLI --> AI : stderr: "run: npx @scrapup/hermetic-diagrams@<version> up"; exit != 0 (< 240 s)
+else prepared
+  CLI -> D : compose up -d --wait --pull never --no-build kroki
+  CLI -> D : compose run -T --rm --pull never --no-build mcp
+  D -> MCP : start (stdio attached)
+  MCP -> K : boot gate (egress self-check, canary)
+  alt contained
+    AI <-> MCP : JSON-RPC over stdio (tools available)
+  else topology mismatch
+    MCP --> AI : render_diagram not registered; containment_status = not contained
+  end
+end
+@enduml
