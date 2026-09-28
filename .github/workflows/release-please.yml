@@ -42,6 +42,12 @@ jobs:
       - run: npm ci
         if: ${{ steps.release.outputs.release_created }}
 
+      # Ship the lockfile with the package (TF-79-02): npm never publishes package-lock.json, so
+      # convert it to npm-shrinkwrap.json in this workspace; `up` builds the MCP image with `npm ci`
+      # against it on the user's machine.
+      - run: npm shrinkwrap
+        if: ${{ steps.release.outputs.release_created }}
+
       - run: npm publish
         if: ${{ steps.release.outputs.release_created }}
         env:
