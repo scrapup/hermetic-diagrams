@@ -10,7 +10,9 @@ import { describe, expect, it } from 'vitest';
  */
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
-const read = (file: string): string => readFileSync(path.join(ROOT, file), 'utf8');
+// Normalize line endings: Windows checkouts (core.autocrlf) turn LF into CRLF.
+const read = (file: string): string =>
+  readFileSync(path.join(ROOT, file), 'utf8').replace(/\r\n/g, '\n');
 
 const FILES = { en: 'README.md', pt: 'README.pt.md', ja: 'README.ja.md' } as const;
 const NAV = {
