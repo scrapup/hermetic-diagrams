@@ -1,0 +1,32 @@
+@startuml
+!include <C4/C4_Container>
+title C4 N2 - Plugin distribution across marketplaces
+
+Person(maintainer, "Maintainer", "Completes and publishes releases")
+Person(user, "User", "Installs and uses the plugin")
+
+System_Boundary(repo, "scrapup/hermetic-diagrams") {
+  Container(main, "main branch", "Git", "Source code; dist/ is never versioned here")
+  Container(release, "Release Process", "GitHub Actions", "Validates, versions, builds and publishes; sole writer of the dist branch")
+  Container(distBranch, "dist branch", "Git (orphan, force-pushed)", "Built snapshot (source + dist/) of the last successfully published release")
+  Container(marketplaceJson, ".claude-plugin/marketplace.json", "Config versioned in main", "Declares the plugin with source.ref = dist")
+}
+
+System_Ext(npm, "npm registry", "Publishes @scrapup/hermetic-diagrams")
+System_Ext(claudeCode, "Claude Code", "Compatible AI assistant")
+System_Ext(copilotCli, "GitHub Copilot CLI", "Compatible AI assistant")
+
+Rel(maintainer, main, "Push / merge PR")
+Rel(main, release, "Triggers on push (main)")
+Rel(release, npm, "npm publish --provenance")
+Rel(release, distBranch, "Builds from the tag and force-pushes the snapshot")
+
+Rel(user, claudeCode, "/plugin marketplace add")
+Rel(user, copilotCli, "copilot plugin marketplace add")
+Rel(claudeCode, marketplaceJson, "Reads the index (main branch)")
+Rel(copilotCli, marketplaceJson, "Reads the index (main branch)")
+Rel(claudeCode, distBranch, "Installs the plugin from source.ref=dist")
+Rel(copilotCli, distBranch, "Installs the plugin from source.ref=dist")
+
+SHOW_LEGEND()
+@enduml

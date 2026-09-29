@@ -1,0 +1,29 @@
+@startuml c4-component
+!include <C4/C4_Component>
+title hermetic-diagrams — MCP Gateway: components (C4 Level 3)
+
+Container_Boundary(mcp, "MCP Gateway + PEP") {
+  Component(transport, "MCP Transport", "stdio", "Exposes the MCP tools")
+  Component(tools, "Tool Registry", "", "render_diagram, list_formats, containment_status")
+  Component(guard, "Containment Guard", "", "Egress self-check at boot; fail-closed if an external route exists")
+  Component(fmt, "Format Validator", "", "Allowlist of notations and output formats")
+  Component(syntax, "Syntax Validator", "", "Validates syntax per notation; descriptive error")
+  Component(sec, "Security Scanner", "", "Rejects external includes/refs, DTD/entities; size/time limits")
+  Component(client, "Kroki Client", "", "POST body to internal Kroki; no external outbound client")
+  Component(sanitizer, "Output Sanitizer", "", "Strips script/foreignObject/external refs from the SVG")
+  Component(errors, "Error Mapper", "", "Maps failures to clear errors")
+}
+
+Container(kroki, "Kroki core", "render engine", "SAFE_MODE=SECURE")
+
+Rel(transport, tools, "Forwards call")
+Rel(tools, guard, "Checks containment (boot)")
+Rel(tools, fmt, "1. validate format")
+Rel(fmt, syntax, "2. validate syntax")
+Rel(syntax, sec, "3. security scan")
+Rel(sec, client, "4. render (if approved)")
+Rel(client, kroki, "POST source", "internal HTTP")
+Rel(client, sanitizer, "5. sanitize output")
+Rel(sanitizer, tools, "contained image")
+Rel(tools, errors, "failures -> clear error")
+@enduml

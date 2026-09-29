@@ -1,0 +1,11 @@
+# Homologated image digests (RN-08). Images are referenced by @sha256 in compose.yaml and the CLI;
+# a mutable tag is never used. Promoting a new digest requires re-proving containment (golden
+# exfiltration + compose integration for every notation) before it is recorded here — see
+# CONTRIBUTING.md "Image homologation" and the CI homologation gate (TF-76-03).
+#
+# Format: <image>  <tag-resolved-from>  <sha256>  <homologated-on>
+
+kroki   docker.io/yuzutech/kroki   latest   sha256:c16303ecd8ae840a6e3a76efa53468836c6297eeb7b7316845c3b24e8dbd0398   2026-07-02
+
+# The `mcp` image is built from this repo (see Dockerfile). Its base is pinned by digest:
+mcp-base   docker.io/library/node   24.18.0-bookworm-slim   sha256:b31e7a42fdf8b8aa5f5ed477c72d694301273f1069c5a2f71d53c6482e99a2fc   2026-07-02

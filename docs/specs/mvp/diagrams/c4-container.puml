@@ -1,0 +1,23 @@
+@startuml c4-container
+!include <C4/C4_Container>
+title hermetic-diagrams — Containers (C4 Level 2)
+
+Person(sol, "Requester", "Developer or AI agent")
+System_Ext(cc, "MCP client", "Claude Code or other local MCP client")
+
+System_Boundary(hd, "hermetic-diagrams — contained environment") {
+  Container(mcp, "MCP Gateway + PEP", "Node.js / TypeScript, stdio", "Single entry point; validates, sanitizes, and mediates every request")
+  Container(kroki, "Kroki core", "Render engine (local-render)", "Renders PlantUML/C4/D2/GraphViz/DBML/ERD/Vega; SAFE_MODE=SECURE; headless")
+}
+
+Rel(sol, cc, "Asks for a diagram")
+Rel(cc, mcp, "Calls MCP tools", "stdio")
+Rel(mcp, kroki, "POST source", "internal HTTP")
+
+note right of kroki
+  Docker network internal: true
+  no default gateway / no egress.
+  Kroki never exposed (zero published ports).
+  MCP is the only client.
+end note
+@enduml
