@@ -63,6 +63,31 @@ describe('sanitizeSvg — neutralizes CSS vectors', () => {
     const out = sanitizeSvg(wrap('<rect width="1" height="1" style="x:javascript:alert(1)"/>'));
     expect(out).not.toMatch(/javascript:/i);
   });
+
+  it('removes a vbscript: reference from a style', () => {
+    const out = sanitizeSvg(wrap('<rect width="1" height="1" style="x:vbscript:msgbox(1)"/>'));
+    expect(out).not.toMatch(/vbscript:/i);
+  });
+
+  it('removes a non-image data: reference from a style', () => {
+    const out = sanitizeSvg(wrap('<rect width="1" height="1" style="x:data:text/html;base64,PHNjcmlwdD4="/>'));
+    expect(out).not.toMatch(/data:/i);
+  });
+
+  it('removes a script scheme reassembled after a single-pass strip', () => {
+    const out = sanitizeSvg(wrap('<rect width="1" height="1" style="x:javajavascript:script:alert(1)"/>'));
+    expect(out).not.toMatch(/javascript:/i);
+  });
+
+  it('removes a script scheme written with whitespace before the colon', () => {
+    const out = sanitizeSvg(wrap('<style>rect{x:javascript :alert(1)}</style><rect width="1" height="1"/>'));
+    expect(out).not.toMatch(/javascript\s*:/i);
+  });
+
+  it('keeps an inline data:image url() in a style', () => {
+    const out = sanitizeSvg(wrap('<rect width="1" height="1" style="fill:url(data:image/png;base64,AAAA)"/>'));
+    expect(out).toMatch(/url\(data:image\/png;base64,AAAA\)/);
+  });
 });
 
 describe('sanitizeSvg — preserves valid content', () => {
