@@ -39,15 +39,33 @@ function isSafeReference(value: string): boolean {
   return trimmed.startsWith('#') || /^data:image\/(?:png|jpe?g|gif|webp);base64,/i.test(trimmed);
 }
 
+/**
+ * Script-capable URL schemes: `javascript:`, `vbscript:` and any `data:` that is not an inline
+ * raster image (the only `data:` form {@link isSafeReference} accepts).
+ */
+const SCRIPT_SCHEME = /(?:javascript|vbscript)\s*:|data\s*:(?!image\/(?:png|jpe?g|gif|webp);base64,)/gi;
+
+/** Remove script schemes until none is left, so a stripped scheme cannot reassemble another. */
+function stripScriptSchemes(css: string): string {
+  let current = css;
+  let previous: string;
+  do {
+    previous = current;
+    current = current.replace(SCRIPT_SCHEME, '');
+  } while (current !== previous);
+  return current;
+}
+
 /** Strip `@import`, external `url(...)`, and script-y CSS from a style value or <style> text. */
 function sanitizeCss(css: string): string {
-  return css
-    .replace(/@import[^;]*;?/gi, '')
-    .replace(/url\(\s*(['"]?)([^)'"]*)\1\s*\)/gi, (match, _q: string, inner: string) =>
-      isSafeReference(inner) ? match : 'none',
-    )
-    .replace(/expression\s*\(/gi, 'void(')
-    .replace(/javascript:/gi, '');
+  return stripScriptSchemes(
+    css
+      .replace(/@import[^;]*;?/gi, '')
+      .replace(/url\(\s*(['"]?)([^)'"]*)\1\s*\)/gi, (match, _q: string, inner: string) =>
+        isSafeReference(inner) ? match : 'none',
+      )
+      .replace(/expression\s*\(/gi, 'void('),
+  );
 }
 
 function sanitizeElement(el: Element): void {
