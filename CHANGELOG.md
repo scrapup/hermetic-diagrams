@@ -4,6 +4,13 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.1](https://github.com/scrapup/hermetic-diagrams/compare/v0.4.0...v0.4.1) (2026-10-03)
+
+
+### Bug Fixes
+
+* **render:** strip every script-capable URL scheme from SVG CSS ([#25](https://github.com/scrapup/hermetic-diagrams/issues/25)) ([2131d83](https://github.com/scrapup/hermetic-diagrams/commit/2131d83bc6b68882eefc5c39551a11f512bddd32))
+
 ## [0.4.0](https://github.com/scrapup/hermetic-diagrams/compare/v0.3.1...v0.4.0) (2026-09-28)
 
 
