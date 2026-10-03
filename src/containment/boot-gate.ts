@@ -5,6 +5,7 @@ import { egressSelfCheck, tcpConnectProbe, type ConnectProbe } from './egress-ch
 import { canaryRender, CANARY_TOKEN, type CanaryDeps } from './canary-render.js';
 import { createCanarySink } from './canary-sink.js';
 import type { ContainmentReport } from './types.js';
+import { stripTrailingSlashes } from '../url.js';
 
 /**
  * Boot gate (`plan.md` §5.4): run the containment proofs in order — Kroki healthcheck → egress
@@ -65,7 +66,7 @@ export async function runBootGate(deps: BootGateDeps): Promise<ContainmentReport
 export function defaultKrokiHealth(config: HermeticConfig, fetchImpl: FetchLike = fetch): () => Promise<boolean> {
   return async (): Promise<boolean> => {
     try {
-      const res = await fetchImpl(`${config.krokiBaseUrl.replace(/\/+$/, '')}/health`, {
+      const res = await fetchImpl(`${stripTrailingSlashes(config.krokiBaseUrl)}/health`, {
         method: 'GET',
       });
       return res.ok;
