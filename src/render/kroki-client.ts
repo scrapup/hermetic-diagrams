@@ -1,5 +1,6 @@
 import { HermeticError } from '../errors.js';
 import type { OutputFormat } from '../domain.js';
+import { stripTrailingSlashes } from '../url.js';
 
 /**
  * The only outbound HTTP the MCP ever makes — and only to the **internal** Kroki host over the
@@ -107,7 +108,7 @@ export async function renderWithKroki(
   fetchImpl: FetchLike = fetch,
 ): Promise<KrokiRenderResult> {
   const { baseUrl, diagramType, output, source, timeoutMs, maxOutputBytes } = params;
-  const url = `${baseUrl.replace(/\/+$/, '')}/${diagramType}/${output}`;
+  const url = `${stripTrailingSlashes(baseUrl)}/${diagramType}/${output}`;
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
