@@ -213,6 +213,12 @@ describe('parseComposeVersion / compareVersions', () => {
     expect(parseComposeVersion('dev')).toBeUndefined();
   });
 
+  it('parses a long digit run without a version in linear time', () => {
+    const start = performance.now();
+    expect(parseComposeVersion('1'.repeat(50_000))).toBeUndefined();
+    expect(performance.now() - start).toBeLessThan(100);
+  });
+
   it.each([
     ['2.24.0', '2.24.0', 0],
     ['2.24.1', '2.24.0', 1],

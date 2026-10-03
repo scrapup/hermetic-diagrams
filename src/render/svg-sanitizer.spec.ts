@@ -118,3 +118,28 @@ describe('sanitizeSvg — fail-closed', () => {
     // Some malformed inputs may still parse; if so, ensure output is at least sanitized SVG.
   });
 });
+
+describe('sanitizeSvg — url() normalization and linear time', () => {
+  it.each([
+    ['single-quoted remote', "fill:url('https://evil.test/x')"],
+    ['double-quoted remote', 'fill:url("https://evil.test/x")'],
+    ['padded remote', 'fill:url(  https://evil.test/x  )'],
+    ['unbalanced quote', "fill:url('https://evil.test/x)"],
+    ['quote inside the reference', `fill:url("https://evil.test/'x")`],
+  ])('replaces a %s url() with none', (_label, style) => {
+    const out = sanitizeSvg(wrap(`<style>rect{${style}}</style><rect width="1" height="1"/>`));
+    expect(out).not.toMatch(/evil\.test/);
+    expect(out).toMatch(/url\(|none/);
+  });
+
+  it("keeps a quoted local fragment url('#g')", () => {
+    const out = sanitizeSvg(wrap(`<style>rect{fill:url('#g')}</style><rect width="1" height="1"/>`));
+    expect(out).toMatch(/url\('#g'\)/);
+  });
+
+  it('sanitizes an unterminated url( with a long whitespace run in linear time', () => {
+    const start = performance.now();
+    sanitizeSvg(wrap(`<style>rect{fill:url(${' '.repeat(20_000)}}</style><rect width="1" height="1"/>`));
+    expect(performance.now() - start).toBeLessThan(500);
+  });
+});
