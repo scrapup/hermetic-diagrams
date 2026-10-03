@@ -4,6 +4,13 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.2](https://github.com/scrapup/hermetic-diagrams/compare/v0.4.1...v0.4.2) (2026-10-03)
+
+
+### Bug Fixes
+
+* **security:** remove super-linear regexes and skip install scripts in CI ([#27](https://github.com/scrapup/hermetic-diagrams/issues/27)) ([11ba1a8](https://github.com/scrapup/hermetic-diagrams/commit/11ba1a8391743ff54523c1fc09ca7820a4554d78))
+
 ## [0.4.1](https://github.com/scrapup/hermetic-diagrams/compare/v0.4.0...v0.4.1) (2026-10-03)
 
 
