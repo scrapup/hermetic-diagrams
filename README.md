@@ -102,7 +102,7 @@ OS (`npx.cmd` on Windows) and runs the pinned version:
       "args": [
         "-e",
         "const w=process.platform==='win32',a=['--prefer-offline','-y','@scrapup/hermetic-diagrams@'+process.argv[1]],p=require('node:child_process'),c=w?p.spawn('npx.cmd '+a.join(' '),{stdio:'inherit',shell:true}):p.spawn('npx',a,{stdio:'inherit'});for(const s of['SIGINT','SIGTERM'])process.on(s,()=>c.kill(s));c.on('exit',x=>process.exit(x??1));c.on('error',()=>process.exit(127))",
-        "0.4.1"
+        "0.4.2"
       ]
     }
   }
@@ -116,7 +116,7 @@ Run this in your own terminal before the first use, and again after each upgrade
 
 <!-- x-release-please-start-version -->
 ```
-npx @scrapup/hermetic-diagrams@0.4.1 up
+npx @scrapup/hermetic-diagrams@0.4.2 up
 ```
 <!-- x-release-please-end -->
 
