@@ -1,6 +1,6 @@
 {
   "name": "@scrapup/hermetic-diagrams",
-  "version": "0.4.1",
+  "version": "0.4.2",
   "description": "Hermetic, anti-exfiltration MCP for rendering diagrams offline — the diagram source never leaves your environment.",
   "keywords": [
     "mcp",
@@ -65,7 +65,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.37.0",
-    "@types/node": "^24.0.0",
+    "@types/node": "^26.6.3",
     "@typescript-eslint/eslint-plugin": "^8.45.0",
     "@typescript-eslint/parser": "^8.45.0",
     "@vitest/coverage-v8": "^3.2.0",
