@@ -103,3 +103,14 @@ describe('scanSecurity — XXE across notations', () => {
     expectReject('graphviz', '<!DOCTYPE foo [ <!ENTITY x SYSTEM "file:///etc/passwd"> ]>'));
   it('blocks a bare ENTITY declaration', () => expectReject('plantuml', '<!ENTITY xxe SYSTEM "http://evil.test">'));
 });
+
+describe('scanSecurity — sprite scan runs in linear time', () => {
+  it('blocks a remote sprite with whitespace after the colon', () =>
+    expectReject('plantuml', 'card x <img:  https://evil.test/s.png>'));
+
+  it('scans an unterminated <img: with a long whitespace run quickly', () => {
+    const start = performance.now();
+    scanSecurity('plantuml', `card x <img:${' '.repeat(50_000)}x`, MAX);
+    expect(performance.now() - start).toBeLessThan(100);
+  });
+});

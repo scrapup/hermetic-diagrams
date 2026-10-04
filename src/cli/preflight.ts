@@ -92,7 +92,7 @@ export async function runPreflight(
 
 /** `v2.29.1`, `2.29.1-desktop.1`, `5.3.1` → `2.29.1` / `5.3.1`. */
 export function parseComposeVersion(raw: string): string | undefined {
-  const m = /(\d+)\.(\d+)\.(\d+)/.exec(raw.trim());
+  const m = /(\d{1,9})\.(\d{1,9})\.(\d{1,9})/.exec(raw.trim());
   return m === null ? undefined : `${m[1]}.${m[2]}.${m[3]}`;
 }
 

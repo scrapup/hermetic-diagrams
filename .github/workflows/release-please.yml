@@ -40,7 +40,7 @@ jobs:
       #    `npm publish` — never publish with a failing golden exfiltration test (plan.md §7.3).
       #    Requires the Docker daemon for the golden/integration suite; GitHub-hosted ubuntu
       #    runners provide it natively.
-      - run: npm ci
+      - run: npm ci --ignore-scripts
         if: ${{ steps.release.outputs.release_created }}
 
       # Ship the lockfile with the package (TF-79-02): npm never publishes package-lock.json, so

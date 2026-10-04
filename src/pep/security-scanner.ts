@@ -46,7 +46,7 @@ function scanPlantUml(source: string): void {
     // Themes loaded `from <url>`.
     if (/^!theme\b/i.test(line) && URL_SCHEME.test(line)) reject('Remote `!theme ... from <url>`.');
     // Sprites referenced by URL: `<img:https://...>`.
-    if (/<img:\s*[^>]*?(?:https?|ftps?|file):\/\//i.test(line)) reject('Remote sprite `<img:url>`.');
+    if (/<img:[^>]*?(?:https?|ftps?|file):\/\//i.test(line)) reject('Remote sprite `<img:url>`.');
   }
 }
 

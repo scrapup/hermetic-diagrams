@@ -56,14 +56,20 @@ function stripScriptSchemes(css: string): string {
   return current;
 }
 
+/** Trim a CSS `url(...)` argument and drop one wrapping quote on each side, balanced or not. */
+function unquote(value: string): string {
+  let ref = value.trim();
+  if (ref.startsWith("'") || ref.startsWith('"')) ref = ref.slice(1);
+  if (ref.endsWith("'") || ref.endsWith('"')) ref = ref.slice(0, -1);
+  return ref;
+}
+
 /** Strip `@import`, external `url(...)`, and script-y CSS from a style value or <style> text. */
 function sanitizeCss(css: string): string {
   return stripScriptSchemes(
     css
       .replace(/@import[^;]*;?/gi, '')
-      .replace(/url\(\s*(['"]?)([^)'"]*)\1\s*\)/gi, (match, _q: string, inner: string) =>
-        isSafeReference(inner) ? match : 'none',
-      )
+      .replace(/url\(([^)]*)\)/gi, (match, inner: string) => (isSafeReference(unquote(inner)) ? match : 'none'))
       .replace(/expression\s*\(/gi, 'void('),
   );
 }
