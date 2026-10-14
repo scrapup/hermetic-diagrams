@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { sha256Hex } from '../../src/aws/icon-lock.ts';
 import type { TarRunner } from './extract.ts';
 import type { FetchLike } from './fetch.ts';
-import { formatViolations, inspectIconFiles, readPreviousLock, runUpdate, type UpdateDeps } from './update.ts';
+import { formatViolations, inspectIconFiles, publishToGithub, readPreviousLock, runUpdate, type UpdateDeps } from './update.ts';
 
 const FIXTURES = fileURLToPath(new URL('../../test/fixtures/aws-icons/', import.meta.url));
 const COMMIT = 'b788ba79e8cd028be274761f0fadd8bf3b711acd';
@@ -186,6 +186,39 @@ describe('runUpdate', () => {
     expect(await readdir(join(repo, 'assets/aws-icons'))).toEqual(['v23.1']);
   });
 
+  it('removes the superseded tag directory and reports the catalog difference', async () => {
+    await runUpdate('v23.1', deps(await cleanArchive()));
+    // Pretend the shipped set was v23.0: rename the dir and the lock tag/root.
+    const lockPath = join(repo, 'aws-icons.lock.json');
+    const old = JSON.parse(await readFile(lockPath, 'utf8')) as Record<string, unknown>;
+    old.tag = 'v23.0';
+    old.root = 'assets/aws-icons/v23.0';
+    old.files = [...(old.files as { path: string }[]), { path: 'Compute/Retired.puml', bytes: 1 }];
+    await writeFile(lockPath, JSON.stringify(old));
+    const { rename } = await import('node:fs/promises');
+    await rename(join(repo, 'assets/aws-icons/v23.1'), join(repo, 'assets/aws-icons/v23.0'));
+
+    const outcome = await runUpdate('v23.1', deps(await cleanArchive()));
+    expect(await readdir(join(repo, 'assets/aws-icons'))).toEqual(['v23.1']);
+    expect(outcome.ok).toBe(true);
+    if (!outcome.ok) return;
+    expect(outcome.diff).toMatchObject({ removed: ['Compute/Retired.puml'], breaking: true });
+    expect(outcome.report).toContain('## AWS icons update: v23.0 → v23.1');
+    expect(outcome.report).toContain(`| Tarball sha256 | \`${sha256Hex(TARBALL)}\` |`);
+  });
+
+  it('never removes a directory named by an invalid previous tag', async () => {
+    await runUpdate('v23.1', deps(await cleanArchive()));
+    const lockPath = join(repo, 'aws-icons.lock.json');
+    const old = JSON.parse(await readFile(lockPath, 'utf8')) as Record<string, unknown>;
+    old.tag = '..';
+    await writeFile(lockPath, JSON.stringify(old));
+    await mkdir(join(repo, 'keep'), { recursive: true });
+    await runUpdate('v23.1', deps(await cleanArchive()));
+    expect(await readdir(repo)).toContain('keep');
+    expect(await readdir(join(repo, 'assets'))).toEqual(['aws-icons']);
+  });
+
   it('cleans its temporary work directory', async () => {
     const tmpRoot = await mkdtemp(join(repo, 'tmp-'));
     await runUpdate('v23.1', deps(await cleanArchive(), { tmpRoot }));
@@ -227,5 +260,30 @@ describe('formatViolations', () => {
         { file: 'B.puml', rule: 'symlink', line: 0 },
       ]),
     ).toBe('A.puml:3  import\nB.puml  symlink');
+  });
+});
+
+describe('publishToGithub', () => {
+  const diff = { added: [], removed: ['A.puml'], renamedCandidates: [], breaking: true };
+
+  it('appends the report to the job summary and breaking/tag to the step outputs', async () => {
+    const writes: Array<[string, string]> = [];
+    await publishToGithub({ GITHUB_STEP_SUMMARY: '/s', GITHUB_OUTPUT: '/o' }, 'REPORT', diff, 'v23.2', (p, d) => {
+      writes.push([p, d]);
+      return Promise.resolve();
+    });
+    expect(writes).toEqual([
+      ['/s', 'REPORT'],
+      ['/o', 'breaking=true\ntag=v23.2\n'],
+    ]);
+  });
+
+  it('does nothing outside GitHub Actions', async () => {
+    const writes: string[] = [];
+    await publishToGithub({}, 'REPORT', diff, 'v23.2', (p) => {
+      writes.push(p);
+      return Promise.resolve();
+    });
+    expect(writes).toEqual([]);
   });
 });

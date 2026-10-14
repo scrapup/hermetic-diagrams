@@ -10,12 +10,13 @@
  * script builds first), so the script checks exactly the code the MCP runs.
  */
 import { randomBytes } from 'node:crypto';
-import { mkdir, mkdtemp, readFile, rename, rm, writeFile } from 'node:fs/promises';
+import { appendFile, mkdir, mkdtemp, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { CATEGORY_AGGREGATE, iconPathParts } from '../../src/aws/path-grammar.ts';
+import { CATEGORY_AGGREGATE, iconPathParts, isIconTag } from '../../src/aws/path-grammar.ts';
 import type { IconLock } from '../../src/aws/icon-lock.ts';
+import { diffCatalog, formatReport, type CatalogDiff } from './catalog-diff.ts';
 import { checkEquivalence } from './equivalence.ts';
 import { extractMembers, listTarball, runTar, selectMembers, verifyExtracted, type TarRunner } from './extract.ts';
 import { downloadTarball, resolveTagCommit, type FetchLike } from './fetch.ts';
@@ -37,7 +38,15 @@ export interface UpdateDeps {
 }
 
 export type UpdateOutcome =
-  | { readonly ok: true; readonly lock: IconLock; readonly previous: IconLock | null; readonly vendoredBytes: number }
+  | {
+      readonly ok: true;
+      readonly lock: IconLock;
+      readonly previous: IconLock | null;
+      readonly vendoredBytes: number;
+      readonly diff: CatalogDiff;
+      /** Markdown report (PR body / job summary). */
+      readonly report: string;
+    }
   | { readonly ok: false; readonly violations: readonly FileViolation[] };
 
 /** Minimal guard for the previous lock: only what the update needs (full validation is the store's). */
@@ -122,6 +131,7 @@ export function inspectIconFiles(raw: ReadonlyMap<string, Uint8Array>, scanner: 
 async function writeAtomically(
   repoRoot: string,
   tag: string,
+  previousTag: string | null,
   files: ReadonlyMap<string, Uint8Array>,
   licenses: ReadonlyMap<string, Uint8Array>,
   lockText: string,
@@ -151,6 +161,11 @@ async function writeAtomically(
     await rename(staging, target);
     await rename(lockTmp, join(repoRoot, LOCK_FILE));
     if (hadTarget) await rm(backup, { recursive: true, force: true });
+    // One shipped release at a time (RN-07): drop the superseded tag directory. The tag comes from the
+    // previous lock, so it is re-checked against the grammar before it is used in a path.
+    if (previousTag !== null && previousTag !== tag && isIconTag(previousTag)) {
+      await rm(join(iconsDir, previousTag), { recursive: true, force: true });
+    }
   } finally {
     await rm(staging, { recursive: true, force: true });
     await rm(join(repoRoot, `.${LOCK_FILE}.${nonce}`), { force: true });
@@ -195,9 +210,10 @@ export async function runUpdate(tag: string, deps: UpdateDeps): Promise<UpdateOu
       files: inspected.files,
       previous: previous ?? undefined,
     });
-    await writeAtomically(deps.repoRoot, tag, inspected.files, licenses, serializeLock(lock));
+    await writeAtomically(deps.repoRoot, tag, previous?.tag ?? null, inspected.files, licenses, serializeLock(lock));
     const vendoredBytes = lock.files.reduce((sum, f) => sum + f.bytes, 0);
-    return { ok: true, lock, previous, vendoredBytes };
+    const diff = diffCatalog(previous?.files ?? null, lock.files);
+    return { ok: true, lock, previous, vendoredBytes, diff, report: formatReport(diff, lock, previous) };
   } finally {
     await rm(work, { recursive: true, force: true });
   }
@@ -213,6 +229,20 @@ export async function loadShippedScanner(repoRoot: string): Promise<SourceScanne
   if (typeof scan !== 'function') throw new Error('dist/pep/security-scanner.js has no scanSecurity — run `npm run build`');
   const scanSecurity = scan as ScanSecurity;
   return (source) => scanSecurity('plantuml', source, Number.MAX_SAFE_INTEGER);
+}
+
+/** GitHub Actions hand-off: the report to the job summary, `breaking`/`tag` to the step outputs. */
+export async function publishToGithub(
+  env: Readonly<Record<string, string | undefined>>,
+  report: string,
+  diff: CatalogDiff,
+  tag: string,
+  append: (path: string, data: string) => Promise<void> = (path, data) => appendFile(path, data),
+): Promise<void> {
+  const summary = env['GITHUB_STEP_SUMMARY'];
+  if (summary !== undefined && summary !== '') await append(summary, report);
+  const output = env['GITHUB_OUTPUT'];
+  if (output !== undefined && output !== '') await append(output, `breaking=${diff.breaking}\ntag=${tag}\n`);
 }
 
 export function formatViolations(violations: readonly FileViolation[]): string {
@@ -239,10 +269,12 @@ async function main(argv: readonly string[]): Promise<number> {
     return 1;
   }
   const { lock } = outcome;
-  console.log(
+  console.log(outcome.report);
+  console.error(
     `icons:update ${lock.tag} (commit ${lock.commit}, tarball sha256 ${lock.tarballSha256}): ` +
       `${lock.files.length} files, ${outcome.vendoredBytes} bytes → ${lock.root}`,
   );
+  await publishToGithub(process.env, outcome.report, outcome.diff, lock.tag);
   return 0;
 }
 
