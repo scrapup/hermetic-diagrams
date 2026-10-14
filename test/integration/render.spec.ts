@@ -88,6 +88,13 @@ describe('containment_status tool', () => {
   });
 });
 
+describe('containment_status — AWS icon set (aws-icons TF-106-04)', () => {
+  it('reports the shipped icon set as verified', async () => {
+    const res = (await client.callTool({ name: 'containment_status', arguments: {} })) as unknown as ToolCallResult;
+    expect(res.structuredContent).toMatchObject({ awsIcons: { state: 'verified', version: 'v23.1' } });
+  });
+});
+
 describe('list_formats tool', () => {
   it('lists the eight input notations', async () => {
     const res = (await client.callTool({ name: 'list_formats', arguments: {} })) as unknown as ToolCallResult;
@@ -127,5 +134,140 @@ describe('render_diagram — refuses external references', () => {
     });
     expect(res.isError).toBe(true);
     expect(res.structuredContent).toMatchObject({ error: { code: 'EXTERNAL_REFERENCE' } });
+  });
+});
+
+/** AWS diagrams through the MCP (aws-icons TF-106-04): includes resolved from the shipped set. */
+const AWS_FIXTURES: ReadonlyArray<{ readonly name: string; readonly format: 'plantuml' | 'c4'; readonly source: string }> = [
+  {
+    name: 'architecture with groups',
+    format: 'plantuml',
+    source: [
+      '@startuml',
+      '!include AWSPuml/AWSCommon.puml',
+      '!include AWSPuml/Groups/AWSCloud.puml',
+      '!include AWSPuml/Groups/VPC.puml',
+      '!include AWSPuml/Groups/PublicSubnet.puml',
+      '!include AWSPuml/Compute/Lambda.puml',
+      '!include AWSPuml/Storage/SimpleStorageService.puml',
+      'AWSCloudGroup(cloud) {',
+      '  VPCGroup(vpc) {',
+      '    PublicSubnetGroup(subnet, "Public subnet") {',
+      '      Lambda(fn, "Handler", "Node.js 24")',
+      '    }',
+      '  }',
+      '  SimpleStorageService(bucket, "Assets", "S3")',
+      '}',
+      'fn --> bucket',
+      '@enduml',
+    ].join('\n'),
+  },
+  {
+    name: 'sequence with participants',
+    format: 'plantuml',
+    source: [
+      '@startuml',
+      '!include AWSPuml/AWSCommon.puml',
+      '!include AWSPuml/Compute/Lambda.puml',
+      '!include AWSPuml/Database/DynamoDB.puml',
+      'actor User as u',
+      'LambdaParticipant(fn, "Handler", "Node.js 24")',
+      'DynamoDBParticipant(db, "Orders", "table")',
+      'u -> fn : invoke',
+      'fn -> db : PutItem',
+      '@enduml',
+    ].join('\n'),
+  },
+  {
+    name: 'c4 with AWSC4Integration',
+    format: 'c4',
+    source: [
+      '@startuml',
+      '!include <C4/C4_Container>',
+      '!include AWSPuml/AWSC4Integration.puml',
+      '!include AWSPuml/AWSCommon.puml',
+      '!include AWSPuml/Compute/Lambda.puml',
+      '!include AWSPuml/Database/DynamoDB.puml',
+      'Person(user, "User")',
+      'Container(fn, "Handler", "Lambda", "Serves requests", $sprite="Lambda")',
+      'ContainerDb(table, "Orders", "DynamoDB", "Stores orders", $sprite="DynamoDB")',
+      'Rel(user, fn, "Calls")',
+      'Rel(fn, table, "Reads/writes")',
+      '@enduml',
+    ].join('\n'),
+  },
+  {
+    name: 'dark mode',
+    format: 'plantuml',
+    source: [
+      '@startuml',
+      '!$AWS_DARK = true',
+      '!include AWSPuml/AWSCommon.puml',
+      '!include AWSPuml/Compute/Lambda.puml',
+      'Lambda(fn, "Handler", "Node.js 24")',
+      '@enduml',
+    ].join('\n'),
+  },
+  {
+    name: 'simplified style',
+    format: 'plantuml',
+    source: [
+      '@startuml',
+      '!include AWSPuml/AWSCommon.puml',
+      '!include AWSPuml/AWSSimplified.puml',
+      '!include AWSPuml/Compute/Lambda.puml',
+      '!include AWSPuml/Storage/SimpleStorageService.puml',
+      'Lambda(fn, "Handler", "")',
+      'SimpleStorageService(bucket, "Assets", "")',
+      'fn --> bucket',
+      '@enduml',
+    ].join('\n'),
+  },
+  {
+    name: 'category all.puml',
+    format: 'plantuml',
+    source: [
+      '@startuml',
+      '!include AWSPuml/AWSCommon.puml',
+      '!include AWSPuml/Storage/all.puml',
+      'SimpleStorageService(bucket, "Assets", "S3")',
+      'Backup(bk, "Backups", "AWS Backup")',
+      'bucket --> bk',
+      '@enduml',
+    ].join('\n'),
+  },
+];
+
+describe('render_diagram — AWS icons (aws-icons TF-106-04)', () => {
+  for (const fx of AWS_FIXTURES) {
+    it(`renders ${fx.name} to sanitized SVG`, async () => {
+      const res = await callRender({ format: fx.format, source: fx.source, output: 'svg' });
+      expect(res.isError, res.content[0]?.text).toBeFalsy();
+      const svg = res.content[0]?.text ?? '';
+      expect(svg).toMatch(/<svg/i);
+      expect(svg).not.toMatch(/<script/i);
+    });
+
+    it(`renders ${fx.name} to PNG`, async () => {
+      const res = await callRender({ format: fx.format, source: fx.source, output: 'png' });
+      expect(res.isError, res.content[0]?.text).toBeFalsy();
+      expect((res.content[0]?.data ?? '').length).toBeGreaterThan(0);
+    });
+  }
+
+  it('keeps the embedded icon images in the sanitized SVG', async () => {
+    const res = await callRender({ format: 'plantuml', source: AWS_FIXTURES[0]!.source, output: 'svg' });
+    expect(res.content[0]?.text ?? '').toContain('data:image/png');
+  });
+
+  it.each([
+    ['!include AWSPuml/AWSCommon.puml\n!include AWSPuml/Compute/Lambdda.puml', 'UNKNOWN_REFERENCE'],
+    ['!include AWSPuml/../AWSCommon.puml', 'UNKNOWN_REFERENCE'],
+    ['!define AWSPuml https://raw.githubusercontent.com/awslabs/aws-icons-for-plantuml/v23.1/dist', 'EXTERNAL_REFERENCE'],
+    ['!include AWSPuml/Compute/Lambda.puml\n!include AWSPuml/AWSCommon.puml', 'INVALID_SYNTAX'],
+  ])('refuses %j with %s before rendering', async (body, code) => {
+    const res = await callRender({ format: 'plantuml', source: `@startuml\n${body}\n@enduml` });
+    expect(res.isError).toBe(true);
+    expect(res.structuredContent).toMatchObject({ error: { code } });
   });
 });

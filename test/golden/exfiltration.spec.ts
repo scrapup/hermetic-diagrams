@@ -1,7 +1,9 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import http from 'node:http';
+import { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 import type { AddressInfo } from 'node:net';
-import { bringUpStack, tearDownStack, compose } from '../helpers/compose.js';
+import { bringUpStack, tearDownStack, compose, mcpStdioCommand } from '../helpers/compose.js';
 
 /**
  * Golden exfiltration test (TF-76-02 / plan §7.1): for each notation, a source with an external
@@ -56,10 +58,37 @@ function vectors(base: string): Array<{ type: string; source: string }> {
         mark: 'bar',
       }),
     },
+    ...awsVectors(base).map((v) => ({ type: 'plantuml', source: v.source })),
+  ];
+}
+
+/**
+ * AWS icon vectors (aws-icons TF-106-04): upstream's documented by-address form rewritten to the
+ * sink, the reserved name redefined to the sink, and an escape attempt through the reserved prefix.
+ * Each must be refused by the PEP **and** never reach the sink when sent straight to the engine.
+ */
+function awsVectors(base: string): Array<{ name: string; source: string; code: string }> {
+  return [
+    {
+      name: 'upstream by-address include',
+      source: `@startuml\n!include ${base}/awslabs/aws-icons-for-plantuml/v23.1/dist/AWSCommon.puml\n@enduml`,
+      code: 'EXTERNAL_REFERENCE',
+    },
+    {
+      name: 'AWSPuml redefined to the sink',
+      source: `@startuml\n!define AWSPuml ${base}/awspuml\n!include AWSPuml/AWSCommon.puml\n@enduml`,
+      code: 'EXTERNAL_REFERENCE',
+    },
+    {
+      name: 'AWSPuml/../ escape',
+      source: `@startuml\n!include AWSPuml/../../${base.replace('http://', '')}/escape.puml\n@enduml`,
+      code: 'UNKNOWN_REFERENCE',
+    },
   ];
 }
 
 let sink: SinkServer;
+let client: Client | undefined;
 
 beforeAll(async () => {
   await bringUpStack();
@@ -67,6 +96,7 @@ beforeAll(async () => {
 }, 300_000);
 
 afterAll(async () => {
+  await client?.close().catch(() => undefined);
   await sink?.close();
   await tearDownStack();
 });
@@ -97,6 +127,26 @@ describe('golden exfiltration', () => {
     );
 
     // Give any late outbound fetch a moment to arrive, then assert zero hits.
+    await new Promise((r) => setTimeout(r, 1_500));
+    expect(sink.hits).toEqual([]);
+  }, 180_000);
+});
+
+describe('golden exfiltration — AWS vectors through the MCP (aws-icons TF-106-04)', () => {
+  it('refuses every AWS vector at the PEP and the sink is never reached', async () => {
+    client = new Client({ name: 'hermetic-diagrams-golden', version: '0.0.0' });
+    await client.connect(new StdioClientTransport(mcpStdioCommand()));
+    const base = `http://host.docker.internal:${sink.port}`;
+
+    for (const vector of awsVectors(base)) {
+      const res = (await client.callTool({
+        name: 'render_diagram',
+        arguments: { format: 'plantuml', source: vector.source },
+      })) as { isError?: boolean; structuredContent?: Record<string, unknown> };
+      expect(res.isError, vector.name).toBe(true);
+      expect(res.structuredContent, vector.name).toMatchObject({ error: { code: vector.code } });
+    }
+
     await new Promise((r) => setTimeout(r, 1_500));
     expect(sink.hits).toEqual([]);
   }, 180_000);
