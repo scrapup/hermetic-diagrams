@@ -6,6 +6,7 @@ import type { FetchLike } from './kroki-client.js';
 import type { HermeticError } from '../errors.js';
 import type { IconSet } from '../aws/icon-set-store.js';
 import { UNVERIFIED_ICON_SET, verifiedIconSet } from '../../test/helpers/icon-sets.js';
+import { withEngineShim } from '../pep/aws-engine-compat.js';
 
 function makeDeps(
   overrides: { maxSourceBytes?: number; maxExpandedSourceBytes?: number } = {},
@@ -129,7 +130,7 @@ describe('renderDiagram — AWS includes (aws-icons TF-106-03)', () => {
       deps,
     );
     expect(bodies()).toEqual([
-      '@startuml\n!define AWSEntity(a) rectangle a\nsprite $Lambda [1x1/16z] {\nx\n}\nAWSEntity(x)\n@enduml',
+      `@startuml\n${withEngineShim('AWSCommon.puml', '!define AWSEntity(a) rectangle a')}\nsprite $Lambda [1x1/16z] {\nx\n}\nAWSEntity(x)\n@enduml`,
     ]);
   });
 

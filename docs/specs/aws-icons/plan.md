@@ -252,12 +252,14 @@ Rules:
    manifest order (equivalence to upstream proven at update time, §5.5).
 4. An icon/group include appearing before `AWSCommon.puml` (or `AWSSimplified`/`AWSExperimental`,
    which require it) → `INVALID_SYNTAX` with the fix.
-5. Each distinct path is inlined once (first occurrence, in place); later duplicates become empty
+5. `AWSCommon.puml` and `AWSExperimental.puml` are followed by their engine-compatibility shim
+   (D-11).
+6. Each distinct path is inlined once (first occurrence, in place); later duplicates become empty
    lines (line numbers preserved for Kroki error messages).
-6. Distinct includes > `MAX_AWS_INCLUDES` or expanded bytes > `MAX_EXPANDED_SOURCE_BYTES` →
+7. Distinct includes > `MAX_AWS_INCLUDES` or expanded bytes > `MAX_EXPANDED_SOURCE_BYTES` →
    `TOO_LARGE` (detail states both limits; checked incrementally — stops before building the full
    string).
-7. Output is the expanded source; `scanSecurity(format, expanded, MAX_EXPANDED_SOURCE_BYTES)` runs
+8. Output is the expanded source; `scanSecurity(format, expanded, MAX_EXPANDED_SOURCE_BYTES)` runs
    on it unchanged (spec RN-04).
 
 ### 4.6 Error enum (additive)
@@ -390,6 +392,7 @@ CHANGELOG either way.
 | D-08 Guides in Markdown with executable examples | Guides in TS strings | Reviewable docs; examples extracted and rendered in CI (spec RN-14) |
 | D-09 Weekly bot PR via GitHub App token | `GITHUB_TOKEN` | Only an app/PAT token triggers CI on the bot PR; app token is scoped and short-lived |
 | D-10 No new runtime dependency | YAML/front-matter parser, Zod | Smaller supply-chain surface; formats are trivial |
+| D-11 Engine compatibility shim appended by the resolver (decided 2026-10-14, during TF-108-03) | Guides teach a per-diagram override; bump the Kroki digest; document only icon-less groups | The pinned engine (PlantUML native image) crashes on any scaled embedded image — HTTP 200 with a stack-trace image. Upstream scales only in `$AWSGroupImg` (`AWSCommon`) and `$AWSIconNote` (`AWSExperimental`). After inlining those two files the resolver appends a redefinition rendering the icon at scale 1 (`src/pep/aws-engine-compat.ts`): vendored files stay byte-identical, upstream copy-paste works, and the shim is System content re-scanned with the expanded source. Remove it once a homologated engine scales images |
 
 ## 7. Testing, CI, and Homologation
 

@@ -2,7 +2,11 @@ import { describe, expect, it } from 'vitest';
 import { UNVERIFIED_ICON_SET, shippedIconSet, verifiedIconSet } from '../../test/helpers/icon-sets.js';
 import type { ErrorCode } from '../domain.js';
 import { HermeticError } from '../errors.js';
+import { withEngineShim } from './aws-engine-compat.js';
 import { resolveAwsIncludes, type AwsResolverLimits } from './aws-include-resolver.js';
+
+/** AWSCommon as inlined: the verified content followed by its engine shim. */
+const C = withEngineShim('AWSCommon.puml', 'COMMON');
 
 const SET = verifiedIconSet({
   'AWSCommon.puml': 'COMMON',
@@ -66,7 +70,7 @@ describe('resolveAwsIncludes — resolution', () => {
       SET,
       LIMITS,
     );
-    expect(result.source).toBe(src('COMMON', 'LAMBDA', 'Lambda(fn, "x", "y")'));
+    expect(result.source).toBe(src(C, 'LAMBDA', 'Lambda(fn, "x", "y")'));
     expect(result.includes).toBe(2);
     expect(result.expandedBytes).toBe(Buffer.byteLength(result.source));
   });
@@ -78,7 +82,7 @@ describe('resolveAwsIncludes — resolution', () => {
       SET,
       LIMITS,
     );
-    expect(result.source).toBe(src('!include <C4/C4_Container>', 'C4INTEGRATION', 'COMMON'));
+    expect(result.source).toBe(src('!include <C4/C4_Container>', 'C4INTEGRATION', C));
   });
 
   it('synthesizes <Category>/all.puml from the category files in manifest order', () => {
@@ -88,7 +92,7 @@ describe('resolveAwsIncludes — resolution', () => {
       SET,
       LIMITS,
     );
-    expect(result.source).toBe(src('COMMON', 'LAMBDA\nEC2'));
+    expect(result.source).toBe(src(C, 'LAMBDA\nEC2'));
   });
 
   it('inlines a duplicate once and leaves an empty line in its place', () => {
@@ -98,19 +102,19 @@ describe('resolveAwsIncludes — resolution', () => {
       SET,
       LIMITS,
     );
-    expect(result.source).toBe(src('COMMON', 'LAMBDA', '', 'X'));
+    expect(result.source).toBe(src(C, 'LAMBDA', '', 'X'));
     expect(result.includes).toBe(2);
-    expect(result.source.split('\n')).toHaveLength(6);
+    expect(result.source.split('\n')).toHaveLength(6 + C.split('\n').length - 1);
   });
 
   it('preserves mixed CRLF/LF line endings', () => {
     const source = '@startuml\r\n!include AWSPuml/AWSCommon.puml\n!include AWSPuml/Groups/VPC.puml\r\n@enduml';
-    expect(resolveAwsIncludes('plantuml', source, SET, LIMITS).source).toBe('@startuml\r\nCOMMON\nVPC\r\n@enduml');
+    expect(resolveAwsIncludes('plantuml', source, SET, LIMITS).source).toBe(`@startuml\r\n${C}\nVPC\r\n@enduml`);
   });
 
   it('lets `!$AWS_DARK = true` before AWSCommon pass through', () => {
     const result = resolveAwsIncludes('plantuml', src('!$AWS_DARK = true', '!include AWSPuml/AWSCommon.puml'), SET, LIMITS);
-    expect(result.source).toBe(src('!$AWS_DARK = true', 'COMMON'));
+    expect(result.source).toBe(src('!$AWS_DARK = true', C));
   });
 
   it('leaves the PlantUML stdlib `<awslib/...>` include untouched next to AWSPuml includes', () => {
@@ -120,7 +124,7 @@ describe('resolveAwsIncludes — resolution', () => {
       SET,
       LIMITS,
     );
-    expect(result.source).toBe(src('!include <awslib/AWSCommon>', 'COMMON'));
+    expect(result.source).toBe(src('!include <awslib/AWSCommon>', C));
   });
 
   it('allows AWSC4Integration before AWSCommon (it does not build on it)', () => {

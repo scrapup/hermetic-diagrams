@@ -2,12 +2,15 @@ import type { DiagramFormat } from '../domain.js';
 import type { IconSet } from '../aws/icon-set-store.js';
 import { CATEGORY_AGGREGATE, isIconPath } from '../aws/path-grammar.js';
 import { HermeticError } from '../errors.js';
+import { withEngineShim } from './aws-engine-compat.js';
 
 /**
  * AWS Include Resolver (aws-icons `plan.md` §4.5) — a PEP step between syntax validation and the
  * Security Scanner. It replaces every `!include AWSPuml/<path>` with the **verified, in-memory**
  * content of the shipped icon set, so Kroki receives a self-contained source and never resolves an
  * include itself. The scanner then runs on the expanded source (RN-04).
+ *
+ * Two upstream helpers get an engine-compatibility override appended (`aws-engine-compat.ts`, D-11).
  *
  * Pure: no filesystem access (enforced by an ESLint `no-restricted-imports` override). Requester
  * input is only ever matched against a grammar and looked up with an exact `Map.get`.
@@ -155,8 +158,9 @@ export function resolveAwsIncludes(
       throw unknownReference(rest, iconSet.version);
     }
     if (!isIconPath(path)) throw unknownReference(path, iconSet.version);
-    const content = lookup(path, iconSet);
-    if (content === undefined) throw unknownReference(path, iconSet.version);
+    const verified = lookup(path, iconSet);
+    if (verified === undefined) throw unknownReference(path, iconSet.version);
+    const content = withEngineShim(path, verified);
 
     if (path === COMMON) commonSeen = true;
     else if (needsCommon(path) && !commonSeen) throw orderError(path);

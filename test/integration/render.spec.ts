@@ -137,8 +137,53 @@ describe('render_diagram — refuses external references', () => {
   });
 });
 
+/** Text of the image PlantUML draws instead of the diagram when it crashes. */
+const ENGINE_CRASH = /An error has occurred|has crashed/;
+
 /** AWS diagrams through the MCP (aws-icons TF-106-04): includes resolved from the shipped set. */
 const AWS_FIXTURES: ReadonlyArray<{ readonly name: string; readonly format: 'plantuml' | 'c4'; readonly source: string }> = [
+  {
+    name: 'every group with an icon (engine shim, D-11)',
+    format: 'plantuml',
+    source: [
+      '@startuml',
+      '!include AWSPuml/AWSCommon.puml',
+      '!include AWSPuml/Groups/AWSCloud.puml',
+      '!include AWSPuml/Groups/AWSAccount.puml',
+      '!include AWSPuml/Groups/Region.puml',
+      '!include AWSPuml/Groups/VPC.puml',
+      '!include AWSPuml/Groups/PrivateSubnet.puml',
+      '!include AWSPuml/Groups/AutoScalingGroup.puml',
+      'AWSCloudGroup(cloud) {',
+      '  AWSAccountGroup(acct, "Production") {',
+      '    RegionGroup(region, "eu-west-1") {',
+      '      VPCGroup(vpc) {',
+      '        PrivateSubnetGroup(subnet, "Private") {',
+      '          AutoScalingGroupGroup(asg) {',
+      '          }',
+      '        }',
+      '      }',
+      '    }',
+      '  }',
+      '}',
+      '@enduml',
+    ].join('\n'),
+  },
+  {
+    name: 'experimental icon notes (engine shim, D-11)',
+    format: 'plantuml',
+    source: [
+      '@startuml',
+      '!include AWSPuml/AWSCommon.puml',
+      '!include AWSPuml/AWSExperimental.puml',
+      '!include AWSPuml/Compute/Lambda.puml',
+      'participant A',
+      'participant B',
+      'A -> B : <$Callout_1> call',
+      '$AWSIconRight("Lambda", "Handler")',
+      '@enduml',
+    ].join('\n'),
+  },
   {
     name: 'architecture with groups',
     format: 'plantuml',
@@ -246,6 +291,8 @@ describe('render_diagram — AWS icons (aws-icons TF-106-04)', () => {
       const svg = res.content[0]?.text ?? '';
       expect(svg).toMatch(/<svg/i);
       expect(svg).not.toMatch(/<script/i);
+      // The engine answers HTTP 200 with a stack-trace image when PlantUML crashes (aws-icons D-11).
+      expect(svg).not.toMatch(ENGINE_CRASH);
     });
 
     it(`renders ${fx.name} to PNG`, async () => {

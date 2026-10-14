@@ -21,3 +21,8 @@ its sha256 is recorded in `aws-icons.lock.json` and verified at every start of t
 upstream per-category `all.puml` files are not redistributed; when a diagram includes
 `AWSPuml/<Category>/all.puml`, the gateway synthesizes it by **aggregating** the category's
 unmodified files in memory — an aggregation, not a modification of any file.
+
+At render time the gateway also appends, after `AWSCommon.puml` and `AWSExperimental.puml`, a short
+compatibility override of two helper functions so that group and note icons render at their
+original size (the bundled engine cannot scale embedded images). The override is added to the
+diagram being rendered; the shipped files themselves are never changed.
