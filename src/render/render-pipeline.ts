@@ -1,9 +1,11 @@
+import type { IconSet } from '../aws/icon-set-store.js';
 import { KROKI_DIAGRAM_TYPE } from '../domain.js';
 import type { HermeticConfig } from '../config.js';
 import { HermeticError } from '../errors.js';
 import { logger } from '../logger.js';
 import { validateFormat } from '../pep/format-validator.js';
 import { validateSyntax } from '../pep/syntax-validator.js';
+import { resolveAwsIncludes } from '../pep/aws-include-resolver.js';
 import { assertSourceSize, scanSecurity } from '../pep/security-scanner.js';
 import { renderWithKroki, type FetchLike } from './kroki-client.js';
 import { sanitizeSvg } from './svg-sanitizer.js';
@@ -31,6 +33,8 @@ export interface RenderOutcome {
 export interface RenderPipelineDeps {
   readonly config: HermeticConfig;
   readonly guard: ConcurrencyGuard;
+  /** Boot-verified AWS icon set; the only source of `AWSPuml/` content. */
+  readonly iconSet: IconSet;
   readonly fetchImpl?: FetchLike;
 }
 
@@ -51,7 +55,21 @@ export async function renderDiagram(
   // Size is the FIRST gate — reject oversized input before any parsing/regex (local-DoS defense).
   assertSourceSize(source, deps.config.maxSourceBytes);
   validateSyntax(format, source);
-  scanSecurity(format, source, deps.config.maxSourceBytes);
+
+  // AWSPuml/ includes are inlined from the verified set; the scanner then inspects exactly what
+  // Kroki will receive (aws-icons RN-04). Logs counts only — never names, paths or content.
+  const resolveStarted = performance.now();
+  const resolved = resolveAwsIncludes(format, source, deps.iconSet, deps.config);
+  if (resolved.includes > 0) {
+    logger.info('aws.resolve', {
+      includes: resolved.includes,
+      expandedBytes: resolved.expandedBytes,
+      durationMs: Math.round(performance.now() - resolveStarted),
+    });
+    scanSecurity(format, resolved.source, deps.config.maxExpandedSourceBytes, 'expanded');
+  } else {
+    scanSecurity(format, resolved.source, deps.config.maxSourceBytes);
+  }
 
   // Guard + engine: render under the concurrency limit against the internal Kroki.
   const { bytes } = await deps.guard.run(() =>
@@ -60,7 +78,7 @@ export async function renderDiagram(
         baseUrl: deps.config.krokiBaseUrl,
         diagramType: KROKI_DIAGRAM_TYPE[format],
         output,
-        source,
+        source: resolved.source,
         timeoutMs: deps.config.renderTimeoutMs,
         maxOutputBytes: deps.config.maxOutputBytes,
       },

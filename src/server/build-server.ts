@@ -29,7 +29,7 @@ export function buildServer(
 
   if (report.contained) {
     const guard = new ConcurrencyGuard(config.maxConcurrency);
-    registerRenderDiagram(server, { config, guard, ...(fetchImpl ? { fetchImpl } : {}) });
+    registerRenderDiagram(server, { config, guard, iconSet, ...(fetchImpl ? { fetchImpl } : {}) });
     logger.info('server.ready', { renderEnabled: true });
   } else {
     // Fail-closed: `NOT_CONTAINED` is realized by NOT registering the render tool at all (a stronger

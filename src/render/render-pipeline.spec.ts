@@ -1,21 +1,29 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { renderDiagram, type RenderPipelineDeps } from './render-pipeline.js';
 import { loadConfig } from '../config.js';
 import { ConcurrencyGuard } from './concurrency.js';
 import type { FetchLike } from './kroki-client.js';
 import type { HermeticError } from '../errors.js';
+import type { IconSet } from '../aws/icon-set-store.js';
+import { UNVERIFIED_ICON_SET, verifiedIconSet } from '../../test/helpers/icon-sets.js';
 
-function makeDeps(overrides: { maxSourceBytes?: number } = {}): {
+function makeDeps(
+  overrides: { maxSourceBytes?: number; maxExpandedSourceBytes?: number } = {},
+  iconSet: IconSet = UNVERIFIED_ICON_SET,
+): {
   deps: RenderPipelineDeps;
   fetchCalls: () => number;
+  bodies: () => string[];
 } {
   let calls = 0;
-  const fetchImpl: FetchLike = async () => {
+  const bodies: string[] = [];
+  const fetchImpl: FetchLike = async (_url, init) => {
     calls++;
+    bodies.push(typeof init.body === 'string' ? init.body : '');
     return new Response('<svg xmlns="http://www.w3.org/2000/svg"><rect/></svg>', { status: 200 });
   };
   const config = { ...loadConfig(), ...overrides };
-  return { deps: { config, guard: new ConcurrencyGuard(2), fetchImpl }, fetchCalls: () => calls };
+  return { deps: { config, guard: new ConcurrencyGuard(2), iconSet, fetchImpl }, fetchCalls: () => calls, bodies: () => bodies };
 }
 
 async function codeOf(fn: () => Promise<unknown>): Promise<string | undefined> {
@@ -73,6 +81,7 @@ describe('renderDiagram — happy path', () => {
     const deps: RenderPipelineDeps = {
       config,
       guard: new ConcurrencyGuard(2),
+      iconSet: UNVERIFIED_ICON_SET,
       fetchImpl: async () => new Response(png, { status: 200, headers: { 'content-type': 'image/png' } }),
     };
     const outcome = await renderDiagram({ format: 'graphviz', source: 'digraph { a -> b }', output: 'png' }, deps);
@@ -86,6 +95,7 @@ describe('renderDiagram — engine error propagation', () => {
     return {
       config: loadConfig(),
       guard: new ConcurrencyGuard(2),
+      iconSet: UNVERIFIED_ICON_SET,
       fetchImpl: async () => new Response('engine says no', { status }),
     };
   }
@@ -100,5 +110,88 @@ describe('renderDiagram — engine error propagation', () => {
     expect(await codeOf(() => renderDiagram({ format: 'graphviz', source: 'digraph { a -> b }' }, depsWith(503)))).toBe(
       'RENDER_ERROR',
     );
+  });
+});
+
+describe('renderDiagram — AWS includes (aws-icons TF-106-03)', () => {
+  const SET = verifiedIconSet({
+    'AWSCommon.puml': '!define AWSEntity(a) rectangle a',
+    'Compute/Lambda.puml': 'sprite $Lambda [1x1/16z] {\nx\n}',
+  });
+
+  it('sends the expanded, self-contained source to Kroki', async () => {
+    const { deps, bodies } = makeDeps({}, SET);
+    await renderDiagram(
+      {
+        format: 'plantuml',
+        source: '@startuml\n!include AWSPuml/AWSCommon.puml\n!include AWSPuml/Compute/Lambda.puml\nAWSEntity(x)\n@enduml',
+      },
+      deps,
+    );
+    expect(bodies()).toEqual([
+      '@startuml\n!define AWSEntity(a) rectangle a\nsprite $Lambda [1x1/16z] {\nx\n}\nAWSEntity(x)\n@enduml',
+    ]);
+  });
+
+  it('still refuses an external reference that arrives through expansion (scanner runs on the expanded source)', async () => {
+    const poisoned = verifiedIconSet({ 'AWSCommon.puml': '!includeurl https://sink.example/x.puml' });
+    const { deps, fetchCalls } = makeDeps({}, poisoned);
+    const code = await codeOf(() =>
+      renderDiagram({ format: 'plantuml', source: '@startuml\n!include AWSPuml/AWSCommon.puml\n@enduml' }, deps),
+    );
+    expect(code).toBe('EXTERNAL_REFERENCE');
+    expect(fetchCalls()).toBe(0);
+  });
+
+  it('refuses an AWSPuml redefinition before Kroki', async () => {
+    const { deps, fetchCalls } = makeDeps({}, SET);
+    const code = await codeOf(() =>
+      renderDiagram({ format: 'plantuml', source: '@startuml\n!define AWSPuml http://sink/\n@enduml' }, deps),
+    );
+    expect(code).toBe('EXTERNAL_REFERENCE');
+    expect(fetchCalls()).toBe(0);
+  });
+
+  it('applies the expanded limit to the expanded source', async () => {
+    const { deps, fetchCalls } = makeDeps({ maxSourceBytes: 100, maxExpandedSourceBytes: 120 }, verifiedIconSet({ 'AWSCommon.puml': 'x'.repeat(200) }));
+    const code = await codeOf(() =>
+      renderDiagram({ format: 'plantuml', source: '@startuml\n!include AWSPuml/AWSCommon.puml\n@enduml' }, deps),
+    );
+    expect(code).toBe('TOO_LARGE');
+    expect(fetchCalls()).toBe(0);
+  });
+
+  it('refuses AWS includes with ICONS_UNAVAILABLE when the set is unverified', async () => {
+    const { deps, fetchCalls } = makeDeps();
+    const code = await codeOf(() =>
+      renderDiagram({ format: 'plantuml', source: '@startuml\n!include AWSPuml/AWSCommon.puml\n@enduml' }, deps),
+    );
+    expect(code).toBe('ICONS_UNAVAILABLE');
+    expect(fetchCalls()).toBe(0);
+  });
+
+  it('sends a non-AWS source unchanged', async () => {
+    const { deps, bodies } = makeDeps({}, SET);
+    const source = '@startuml\nAlice -> Bob\n@enduml';
+    await renderDiagram({ format: 'plantuml', source }, deps);
+    expect(bodies()).toEqual([source]);
+  });
+
+  it('logs aws.resolve with counts only when AWS includes were inlined', async () => {
+    const write = vi.spyOn(process.stderr, 'write').mockImplementation(() => true);
+    const { deps } = makeDeps({}, SET);
+    await renderDiagram({ format: 'plantuml', source: '@startuml\nAlice -> Bob\n@enduml' }, deps);
+    await renderDiagram(
+      { format: 'plantuml', source: '@startuml\n!include AWSPuml/AWSCommon.puml\n!include AWSPuml/Compute/Lambda.puml\n@enduml' },
+      deps,
+    );
+    const lines = write.mock.calls.map((c) => String(c[0]));
+    write.mockRestore();
+    const resolves = lines.filter((l) => l.includes('"event":"aws.resolve"'));
+    expect(resolves).toHaveLength(1);
+    const event = JSON.parse(resolves[0] ?? '{}') as Record<string, unknown>;
+    expect(Object.keys(event).sort()).toEqual(['durationMs', 'event', 'expandedBytes', 'includes', 'level']);
+    expect(event.includes).toBe(2);
+    expect(lines.join('')).not.toMatch(/Lambda|AWSCommon/);
   });
 });
