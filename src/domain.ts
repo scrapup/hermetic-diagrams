@@ -35,6 +35,10 @@ export const ERROR_CODES = [
   'RENDER_TIMEOUT',
   'RENDER_ERROR',
   'NOT_CONTAINED',
+  // AWS icons and authoring guides (aws-icons `plan.md` §4.6).
+  'UNKNOWN_REFERENCE',
+  'ICONS_UNAVAILABLE',
+  'UNKNOWN_GUIDE',
 ] as const;
 
 export type ErrorCode = (typeof ERROR_CODES)[number];

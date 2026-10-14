@@ -27,6 +27,22 @@ describe('scanSecurity — size limit', () => {
     expect(() => scanSecurity('plantuml', 'A -> B', MAX)).not.toThrow();
   });
 
+  it('tags the refusal with the limit it hit (source vs expanded)', () => {
+    const errorOf = (fn: () => void): HermeticError => {
+      try {
+        fn();
+      } catch (err) {
+        return err as HermeticError;
+      }
+      throw new Error('expected a refusal');
+    };
+    const raw = errorOf(() => scanSecurity('plantuml', 'A'.repeat(11), 10));
+    expect(raw).toMatchObject({ code: 'TOO_LARGE', detail: 'source' });
+    const expanded = errorOf(() => scanSecurity('plantuml', 'A'.repeat(11), 10, 'expanded'));
+    expect(expanded).toMatchObject({ code: 'TOO_LARGE', detail: 'expanded' });
+    expect(expanded.message).toContain('Expanded source');
+  });
+
   it('measures bytes, not code points (multi-byte char over a small limit)', () => {
     // "é" is 2 bytes in UTF-8; 6 chars = 12 bytes > 10.
     expect(() => scanSecurity('plantuml', 'éééééé', 10)).toThrow(HermeticError);

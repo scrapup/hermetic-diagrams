@@ -18,6 +18,9 @@ const REJECTION_CODES: ReadonlySet<ErrorCode> = new Set<ErrorCode>([
   'EXTERNAL_REFERENCE',
   'EMPTY_CONTENT',
   'TOO_LARGE',
+  'UNKNOWN_REFERENCE',
+  'ICONS_UNAVAILABLE',
+  'UNKNOWN_GUIDE',
 ]);
 
 /**
