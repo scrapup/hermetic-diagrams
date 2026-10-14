@@ -1,4 +1,5 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import type { IconSet } from '../aws/icon-set-store.js';
 import type { HermeticConfig } from '../config.js';
 import { logger } from '../logger.js';
 import { ConcurrencyGuard } from '../render/concurrency.js';
@@ -15,6 +16,7 @@ import { registerRenderDiagram } from './tools/render-diagram.js';
 export function buildServer(
   config: HermeticConfig,
   report: ContainmentReport,
+  iconSet: IconSet,
   fetchImpl?: FetchLike,
 ): McpServer {
   const server = new McpServer({
@@ -22,7 +24,7 @@ export function buildServer(
     version: '0.1.0',
   });
 
-  registerContainmentStatus(server, report);
+  registerContainmentStatus(server, report, iconSet);
   registerListFormats(server);
 
   if (report.contained) {

@@ -267,6 +267,9 @@ distinguishes `source` vs `expanded`.
 { "awsIcons": { "state": "verified | unverified", "version": "v23.1", "reason": "string — optional" } }
 ```
 
+`version` is `null` when the lock itself cannot be read (`reason: lock_invalid`); `reason` is one of
+`lock_invalid`, `file_missing`, `hash_mismatch` and is present only when `unverified`.
+
 Icon-set integrity does **not** affect `contained`: containment is the network + engine; a bad
 icon set only disables the AWS feature (spec edge case "integrity check at startup" — decided here,
 see §6).

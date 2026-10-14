@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { buildServer } from './build-server.js';
 import { loadConfig } from '../config.js';
 import type { ContainmentReport } from '../containment/types.js';
+import { UNVERIFIED_ICON_SET } from '../../test/helpers/icon-sets.js';
 
 function report(contained: boolean): ContainmentReport {
   return {
@@ -24,7 +25,7 @@ async function toolNames(server: ReturnType<typeof buildServer>): Promise<string
 
 describe('buildServer', () => {
   it('registers the render tool when contained', async () => {
-    const server = buildServer(loadConfig(), report(true));
+    const server = buildServer(loadConfig(), report(true), UNVERIFIED_ICON_SET);
     const names = await toolNames(server);
     expect(names).toContain('render_diagram');
     expect(names).toContain('list_formats');
@@ -32,7 +33,7 @@ describe('buildServer', () => {
   });
 
   it('withholds the render tool when NOT contained (fail-closed)', async () => {
-    const server = buildServer(loadConfig(), report(false));
+    const server = buildServer(loadConfig(), report(false), UNVERIFIED_ICON_SET);
     const names = await toolNames(server);
     expect(names).not.toContain('render_diagram');
     expect(names).toContain('containment_status');
