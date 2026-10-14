@@ -45,18 +45,34 @@ const STRICT_RULES: readonly StrictRule[] = [
 
 const URL_SCHEME = /[a-z][a-z0-9+.-]*:\/\//i;
 
+/**
+ * Includes a **guide** may show (aws-icons `plan.md` §5.2): the reserved `AWSPuml/` prefix and the
+ * engine's bundled stdlib (`<C4/…>`, `<awslib/…>`). Vendored icon files may include nothing.
+ */
+const GUIDE_INCLUDE = /^\s*!include(?:_once)?\s+(?:AWSPuml\/[A-Za-z0-9_/]+\.puml|<(?:C4|awslib)\/[A-Za-z0-9_/]+>)\s*$/;
+
+export function isGuideInclude(line: string): boolean {
+  return GUIDE_INCLUDE.test(line);
+}
+
+export interface StrictScanOptions {
+  /** Exempts a line from the `include` rule (guides only). */
+  readonly allowInclude?: (line: string) => boolean;
+}
+
 /** A PlantUML single-line comment: the first non-blank character is `'`. */
 function isCommentLine(line: string): boolean {
   return line.trimStart().startsWith("'");
 }
 
 /** Applies the strict rules to every non-comment line. */
-export function strictScan(content: string): StrictViolation[] {
+export function strictScan(content: string, options: StrictScanOptions = {}): StrictViolation[] {
   const violations: StrictViolation[] = [];
   const lines = content.split(/\r?\n/);
   lines.forEach((line, index) => {
     if (isCommentLine(line)) return;
     for (const rule of STRICT_RULES) {
+      if (rule.name === 'include' && options.allowInclude?.(line) === true) continue;
       if (rule.pattern.test(line)) violations.push({ rule: rule.name, line: index + 1 });
     }
     if (URL_SCHEME.test(line.split(SVG_NAMESPACE_LITERAL).join(''))) {

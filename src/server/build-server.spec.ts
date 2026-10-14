@@ -25,16 +25,18 @@ async function toolNames(server: ReturnType<typeof buildServer>): Promise<string
 
 describe('buildServer', () => {
   it('registers the render tool when contained', async () => {
-    const server = buildServer(loadConfig(), report(true), UNVERIFIED_ICON_SET);
+    const server = buildServer(loadConfig(), report(true), { iconSet: UNVERIFIED_ICON_SET, guides: { awsIconsVersion: null, guides: new Map() } });
     const names = await toolNames(server);
     expect(names).toContain('render_diagram');
     expect(names).toContain('list_formats');
     expect(names).toContain('containment_status');
     expect(names).toContain('list_aws_icons');
+    expect(names).toContain('list_authoring_guides');
+    expect(names).toContain('get_authoring_guide');
   });
 
   it('withholds the render tool when NOT contained (fail-closed)', async () => {
-    const server = buildServer(loadConfig(), report(false), UNVERIFIED_ICON_SET);
+    const server = buildServer(loadConfig(), report(false), { iconSet: UNVERIFIED_ICON_SET, guides: { awsIconsVersion: null, guides: new Map() } });
     const names = await toolNames(server);
     expect(names).not.toContain('render_diagram');
     expect(names).toContain('containment_status');

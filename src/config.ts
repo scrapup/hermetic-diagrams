@@ -54,6 +54,8 @@ export interface HermeticConfig {
   readonly awsIconsRoot: string;
   /** The icon-set lock baked next to the package (`/app/aws-icons.lock.json`); not configurable. */
   readonly awsIconsLockPath: string;
+  /** Shipped authoring guides (`/app/assets/guides`); not configurable. */
+  readonly guidesRoot: string;
 }
 
 const DEFAULT_MAX_EXPANDED_SOURCE_BYTES = 2 * 1024 * 1024;
@@ -86,5 +88,6 @@ export function loadConfig(): HermeticConfig {
     maxAwsIncludes: intFromEnv('MAX_AWS_INCLUDES', 200),
     awsIconsRoot: awsIconsRootFromEnv(process.env['AWS_ICONS_ROOT']),
     awsIconsLockPath: path.posix.join(APP_ROOT, 'aws-icons.lock.json'),
+    guidesRoot: path.posix.join(ASSETS_ROOT, 'guides'),
   };
 }

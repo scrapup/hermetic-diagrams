@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { scanVendoredContent, strictScan } from './vendored-scan.ts';
+import { isGuideInclude, scanVendoredContent, strictScan } from './vendored-scan.ts';
 
 const CLEAN = [
   "' Copyright 2019 Amazon.com. See https://github.com/awslabs/aws-icons-for-plantuml/blob/main/LICENSE",
@@ -76,5 +76,33 @@ describe('scanVendoredContent', () => {
 
   it('returns no violation for clean content accepted by the scanner', () => {
     expect(scanVendoredContent('A.puml', CLEAN, () => undefined)).toEqual([]);
+  });
+});
+
+describe('guide include allowance', () => {
+  it.each([
+    '!include AWSPuml/AWSCommon.puml',
+    '!include_once AWSPuml/Compute/Lambda.puml',
+    '!include <C4/C4_Container>',
+    '!include <awslib/Compute/Lambda>',
+  ])('allows %s in guides', (line) => {
+    expect(isGuideInclude(line)).toBe(true);
+    expect(strictScan(line, { allowInclude: isGuideInclude })).toEqual([]);
+  });
+
+  it.each([
+    '!include https://example.com/x.puml',
+    '!include AWSPuml/../x.puml',
+    '!include other.puml',
+    '!includeurl AWSPuml/AWSCommon.puml',
+    '!include <C4/C4_Container> extra',
+  ])('still refuses %s in guides', (line) => {
+    expect(strictScan(line, { allowInclude: isGuideInclude }).map((v) => v.rule)).toContain(
+      line.includes('https://') ? 'url_scheme' : 'include',
+    );
+  });
+
+  it('never exempts an include in vendored content (no options)', () => {
+    expect(strictScan('!include AWSPuml/AWSCommon.puml').map((v) => v.rule)).toEqual(['include']);
   });
 });
