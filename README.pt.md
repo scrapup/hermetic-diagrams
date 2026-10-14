@@ -180,7 +180,8 @@ Resposta (erro):
 ```
 
 Códigos de erro: `INVALID_FORMAT`, `INVALID_SYNTAX`, `EXTERNAL_REFERENCE`, `EMPTY_CONTENT`,
-`TOO_LARGE`, `RENDER_TIMEOUT`, `RENDER_ERROR`, `NOT_CONTAINED`.
+`TOO_LARGE`, `RENDER_TIMEOUT`, `RENDER_ERROR`, `NOT_CONTAINED`, `UNKNOWN_REFERENCE`,
+`ICONS_UNAVAILABLE`, `UNKNOWN_GUIDE`.
 
 ### `list_formats`
 
@@ -196,7 +197,8 @@ Códigos de erro: `INVALID_FORMAT`, `INVALID_SYNTAX`, `EXTERNAL_REFERENCE`, `EMP
   "checks": {
     "krokiHealth": "pass", "egressSelfCheck": "pass", "canaryRender": "pass",
     "krokiSafeMode": "SECURE", "publishedPorts": "none"
-  }
+  },
+  "awsIcons": { "state": "verified", "version": "v23.1" }
 }
 ```
 
@@ -215,6 +217,56 @@ Códigos de erro: `INVALID_FORMAT`, `INVALID_SYNTAX`, `EXTERNAL_REFERENCE`, `EMP
 
 SVG (o padrão) está disponível para todas as notações. PNG está disponível para as notações que a
 imagem core do Kroki consegue rasterizar sem componentes de navegador; para as demais, peça SVG.
+
+## Ícones AWS e guias de autoria
+
+O conjunto oficial de ícones AWS para PlantUML (`awslabs/aws-icons-for-plantuml`, release `v23.1`)
+vem **dentro** do pacote e da imagem. Os diagramas o referenciam pelo prefixo reservado `AWSPuml/`,
+que resolve **somente** contra o conjunto distribuído — cada arquivo fixado por sha256 em
+`aws-icons.lock.json` e verificado a cada inicialização. Nada é baixado na hora de renderizar; a
+forma por endereço do upstream e redefinir `AWSPuml` são recusadas.
+
+```plantuml
+@startuml
+!include AWSPuml/AWSCommon.puml
+!include AWSPuml/Compute/Lambda.puml
+!include AWSPuml/Database/DynamoDB.puml
+Lambda(fn, "Handler", "Node.js 24")
+DynamoDB(table, "Orders", "table")
+fn --> table
+@enduml
+```
+
+- Inclua `AWSPuml/AWSCommon.puml` primeiro e depois um arquivo por ícone (ou uma categoria inteira
+  com `AWSPuml/<Category>/all.puml`). Grupos (conta, região, VPC, sub-rede…), participantes de
+  sequência, C4 (`format: "c4"` + `AWSPuml/AWSC4Integration.puml`), o estilo simplificado e o modo
+  escuro (`!$AWS_DARK = true` antes do `AWSCommon`) são suportados.
+- O conjunto de ícones em vigor é informado em `containment_status.awsIcons`; se a verificação de
+  integridade falhar, os includes AWS são recusados (`ICONS_UNAVAILABLE`) e as demais notações
+  continuam funcionando.
+
+### `list_aws_icons`
+
+Busca offline nos ícones distribuídos por categoria e/ou nome; devolve a linha de include exata e
+as macros de cada ícone.
+
+```json
+{ "category": "Compute", "query": "lambda", "limit": 10 }
+```
+
+### `list_authoring_guides` / `get_authoring_guide`
+
+Guias distribuídos, um por notação suportada e um por tipo de diagrama AWS (`aws-architecture`,
+`aws-sequence`, `aws-c4`, `aws-simplified`, `aws-dark`): quando usar, blocos de construção, o que
+este servidor recusa (e o que usar no lugar) e exemplos comprovadamente renderizáveis aqui.
+Assistentes de IA devem chamar `list_authoring_guides` antes de escrever um diagrama.
+
+```json
+{ "id": "aws-architecture" }
+```
+
+Ícones AWS: © Amazon.com, Inc. ou suas afiliadas — ícones CC-BY-ND 2.0, código MIT, redistribuídos
+sem modificação. Veja [`THIRD_PARTY_NOTICES.md`](./THIRD_PARTY_NOTICES.md).
 
 ## Limitações (MVP)
 

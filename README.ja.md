@@ -181,7 +181,8 @@ copilot plugin update hermetic-diagrams
 ```
 
 エラーコード: `INVALID_FORMAT`、`INVALID_SYNTAX`、`EXTERNAL_REFERENCE`、`EMPTY_CONTENT`、
-`TOO_LARGE`、`RENDER_TIMEOUT`、`RENDER_ERROR`、`NOT_CONTAINED`。
+`TOO_LARGE`、`RENDER_TIMEOUT`、`RENDER_ERROR`、`NOT_CONTAINED`、`UNKNOWN_REFERENCE`、
+`ICONS_UNAVAILABLE`、`UNKNOWN_GUIDE`。
 
 ### `list_formats`
 
@@ -197,7 +198,8 @@ copilot plugin update hermetic-diagrams
   "checks": {
     "krokiHealth": "pass", "egressSelfCheck": "pass", "canaryRender": "pass",
     "krokiSafeMode": "SECURE", "publishedPorts": "none"
-  }
+  },
+  "awsIcons": { "state": "verified", "version": "v23.1" }
 }
 ```
 
@@ -216,6 +218,54 @@ copilot plugin update hermetic-diagrams
 
 SVG（デフォルト）はすべての記法で利用できます。PNG は、Kroki の core イメージがブラウザコンポーネント
 なしでラスタライズできる記法で利用できます。それ以外は SVG を指定してください。
+
+## AWS アイコンと作成ガイド
+
+PlantUML 用の公式 AWS アイコンセット（`awslabs/aws-icons-for-plantuml`、リリース `v23.1`）は、
+パッケージとイメージの**内部**に同梱されています。図からは予約プレフィックス `AWSPuml/` で参照し、
+これは同梱セット**のみ**に対して解決されます。各ファイルは `aws-icons.lock.json` で sha256 により
+固定され、起動のたびに検証されます。レンダリング時に何かを取得することはなく、上流のアドレス指定形式や
+`AWSPuml` の再定義は拒否されます。
+
+```plantuml
+@startuml
+!include AWSPuml/AWSCommon.puml
+!include AWSPuml/Compute/Lambda.puml
+!include AWSPuml/Database/DynamoDB.puml
+Lambda(fn, "Handler", "Node.js 24")
+DynamoDB(table, "Orders", "table")
+fn --> table
+@enduml
+```
+
+- まず `AWSPuml/AWSCommon.puml` をインクルードし、次にアイコンごとに 1 ファイル（またはカテゴリ全体を
+  `AWSPuml/<Category>/all.puml` で）インクルードします。グループ（アカウント、リージョン、VPC、
+  サブネットなど）、シーケンスの参加者、C4（`format: "c4"` + `AWSPuml/AWSC4Integration.puml`）、
+  シンプル表示スタイル、ダークモード（`AWSCommon` の前に `!$AWS_DARK = true`）に対応しています。
+- 有効なアイコンセットは `containment_status.awsIcons` で報告されます。整合性チェックに失敗した場合、
+  AWS のインクルードは拒否され（`ICONS_UNAVAILABLE`）、その他の記法は引き続き動作します。
+
+### `list_aws_icons`
+
+同梱アイコンをカテゴリや名前でオフライン検索し、各アイコンの正確なインクルード行とマクロを返します。
+
+```json
+{ "category": "Compute", "query": "lambda", "limit": 10 }
+```
+
+### `list_authoring_guides` / `get_authoring_guide`
+
+対応する記法ごとに 1 つ、AWS 図の種類ごとに 1 つ（`aws-architecture`、`aws-sequence`、`aws-c4`、
+`aws-simplified`、`aws-dark`）の同梱ガイドです。使いどころ、構成要素、このサーバーが拒否するもの
+（とその代替）、そしてここでレンダリングできることが証明された例を含みます。AI アシスタントは図を
+書く前に `list_authoring_guides` を呼び出してください。
+
+```json
+{ "id": "aws-architecture" }
+```
+
+AWS アイコン: © Amazon.com, Inc. またはその関連会社 — アイコンは CC-BY-ND 2.0、コードは MIT、
+無改変で再配布しています。[`THIRD_PARTY_NOTICES.md`](./THIRD_PARTY_NOTICES.md) を参照してください。
 
 ## 制限事項（MVP）
 

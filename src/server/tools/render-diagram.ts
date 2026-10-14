@@ -77,7 +77,9 @@ export function registerRenderDiagram(server: McpServer, deps: RenderPipelineDep
       title: 'Render a diagram (hermetic)',
       description:
         'Render a diagram from text to SVG (default) or PNG entirely inside a no-egress environment. ' +
-        'Rejects any external reference before rendering; the source never leaves the machine.',
+        'Rejects any external reference before rendering; the source never leaves the machine. ' +
+        'Before writing a diagram, call `list_authoring_guides`; AWS icons: `!include AWSPuml/...` ' +
+        '(see `list_aws_icons`).',
       inputSchema: RENDER_DIAGRAM_INPUT,
     },
     async (args) => handler(args),

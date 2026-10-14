@@ -42,4 +42,16 @@ describe('buildServer', () => {
     expect(names).toContain('containment_status');
     expect(names).toContain('list_aws_icons');
   });
+
+  it('points the render tool at the authoring guides and the AWS icon discovery', () => {
+    const server = buildServer(loadConfig(), report(true), {
+      iconSet: UNVERIFIED_ICON_SET,
+      guides: { awsIconsVersion: null, guides: new Map() },
+    });
+    const tools = (server as unknown as { _registeredTools: Record<string, { description?: string }> })._registeredTools;
+    const description = tools['render_diagram']?.description ?? '';
+    expect(description).toContain('list_authoring_guides');
+    expect(description).toContain('AWSPuml/');
+    expect(description).toContain('list_aws_icons');
+  });
 });
