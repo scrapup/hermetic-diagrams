@@ -55,6 +55,7 @@
     "test:coverage": "vitest run --project unit --coverage",
     "test:golden": "vitest run --project golden",
     "test:integration": "vitest run --project integration --no-file-parallelism",
+    "icons:update": "npm run build && node scripts/aws-icons/update.ts",
     "start": "node dist/index.js",
     "prepublishOnly": "npm run build && npm run lint && npm run test && npm run test:golden"
   },
