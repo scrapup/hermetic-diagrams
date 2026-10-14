@@ -53,6 +53,16 @@ describe('published package → client-side MCP image (TF-79-02)', () => {
     expect(existsSync(path.join(root, 'src'))).toBe(false);
   });
 
+  it('ships the vendored AWS icon set, its lock and the third-party notices (TF-105-05)', () => {
+    const root = artifact!.packageRoot;
+
+    expect(existsSync(path.join(root, 'assets', 'aws-icons', 'v23.1', 'AWSCommon.puml'))).toBe(true);
+    expect(existsSync(path.join(root, 'assets', 'aws-icons', 'v23.1', 'LICENSE'))).toBe(true);
+    expect(existsSync(path.join(root, 'aws-icons.lock.json'))).toBe(true);
+    expect(existsSync(path.join(root, 'THIRD_PARTY_NOTICES.md'))).toBe(true);
+    expect(existsSync(path.join(root, 'scripts'))).toBe(false);
+  });
+
   it('builds the image tagged with the version from the extracted tarball alone', async () => {
     expect(await inspect('{{index .RepoTags 0}}')).toBe(IMAGE);
   });
@@ -75,5 +85,27 @@ describe('published package → client-side MCP image (TF-79-02)', () => {
     expect(stdout).toContain('has-deps');
     expect(stdout).not.toMatch(/^src$/m);
     expect(stdout).not.toMatch(/tsconfig/);
+  });
+
+  it('bakes the AWS icon set read-only for the node user (TF-105-05)', async () => {
+    const { stdout } = await execFileAsync('docker', [
+      'run', '--rm', '--network', 'none', '--entrypoint', 'sh', IMAGE, '-c',
+      [
+        'f=/app/assets/aws-icons/v23.1/AWSCommon.puml',
+        'test -f "$f" && echo has-icons',
+        'test -f /app/aws-icons.lock.json && echo has-lock',
+        'test -w "$f" || echo icon-read-only',
+        'test -w /app/assets/aws-icons/v23.1 || echo dir-read-only',
+        'test -w /app/aws-icons.lock.json || echo lock-read-only',
+        'whoami',
+      ].join('; '),
+    ]);
+
+    expect(stdout).toContain('has-icons');
+    expect(stdout).toContain('has-lock');
+    expect(stdout).toContain('icon-read-only');
+    expect(stdout).toContain('dir-read-only');
+    expect(stdout).toContain('lock-read-only');
+    expect(stdout).toMatch(/^node$/m);
   });
 });

@@ -35,8 +35,11 @@
     "compose.yaml",
     "Dockerfile",
     "images.lock",
+    "aws-icons.lock.json",
+    "assets",
     "README.md",
     "LICENSE",
+    "THIRD_PARTY_NOTICES.md",
     "CHANGELOG.md",
     ".dockerignore",
     "npm-shrinkwrap.json"
