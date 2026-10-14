@@ -1,0 +1,16 @@
+' Copyright 2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+' SPDX-License-Identifier: CC-BY-ND-2.0 (For details, see https://github.com/awslabs/aws-icons-for-plantuml/blob/main/LICENSE)
+sprite $ManagementGovernance [64x64/16z] {
+xTR5WSD040NH4gkLVxwxPlPlys3Tdt1e2jxoHddxwbjEQf_tdFMejw6vOM1NCvZs0oWFW_ODe-tCcTyztKYZFPXwVmFFw--FxqLVzRj2-1PTwtYyNB-e4l8G
+p7Exd_ZmxoyAvU57Flp_3__-glozrtVNVx_VUGZjJN1p_Uu0TJl__BGCw0R7sz08VN9-hEV_wiFs3m
+}
+
+!function $ManagementGovernanceIMG($scale=1)
+!return "<img data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAACDklEQVR4nO2bv0oDQRDGv/tcEBURLUQQtPMBBK0sBWtLLUTLdD6AYCPYaqG2wUJLX8BOO8EHsLMQxEKxiGKhJ3sY8E9I7pLdjOfnD8KmyMzszszdzt5Nku3d/RTCEOK4+pfVrRsoUd0Yz0b5DCDEIcQhxCHEIcQhxHFWhoePVtA7P1VI5uX0Cg/Lh38jA3oLLr5dme5nABMMVObQvzqDnsmRlj+/Hd3IpXbsbuvL2IjX63s8VS9QOzgH3lIbBwxU5jC4uQALvMPrtmt7ZzYO6F+bzcbH9RM8H18CaeNINItkWxmTJOhbmsbQzmKWfWYO6JkYzsZmiw/hiB+kaWbTOyDPpRf/JpimLe/oRWkpk8Phv2YbfAi8nbULIY4LrTDvtvZbIMRxMUvXkMQogwtlgOXiY9p3ZbjGg9UKDSDEIcRhjHSNmbKhIcRxnQg3i3SnWdCtmy0hjgsdpXrky1ISE+K40ArLEvk6hDi0noB13UCI4zoRDhm577r+64Cy1gFFsa4bCHGc9QSs6wZCHEIcQhxXVKBMT3uCZsBLGy8zQxLLvivby8zQEOLwL57wikCIw6jakySq+hD2GGMevl3N45uWuuaEjyapz/bNzgJP1YusXc03LPlPt/H2TR1Q842KvmUuZ7NkKL40SpqeBt/SrE8vb6+eJYQ4hDiEOIQ4hDiEOIQ47vt/adWg9QSseQf3CpmI86qslQAAAABJRU5ErkJggg=={scale="+$scale+"}>"
+!endfunction
+
+AWSEntityColoring(ManagementGovernance)
+!define ManagementGovernance(e_alias, e_label, e_techn) AWSEntity(e_alias, e_label, e_techn, #E7157B, ManagementGovernance, ManagementGovernance)
+!define ManagementGovernance(e_alias, e_label, e_techn, e_descr) AWSEntity(e_alias, e_label, e_techn, e_descr, #E7157B, ManagementGovernance, ManagementGovernance)
+!define ManagementGovernanceParticipant(p_alias, p_label, p_techn) AWSParticipant(p_alias, p_label, p_techn, #E7157B, ManagementGovernance, ManagementGovernance)
+!define ManagementGovernanceParticipant(p_alias, p_label, p_techn, p_descr) AWSParticipant(p_alias, p_label, p_techn, p_descr, #E7157B, ManagementGovernance, ManagementGovernance)

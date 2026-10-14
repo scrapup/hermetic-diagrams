@@ -1,0 +1,16 @@
+' Copyright 2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+' SPDX-License-Identifier: CC-BY-ND-2.0 (For details, see https://github.com/awslabs/aws-icons-for-plantuml/blob/main/LICENSE)
+sprite $Containers [64x64/16z] {
+xPG5eiH02CKo0jp_n5_MfVAwBgGkOPou7qa2x-nxlSulKA_GZU9n1Pts5wJPDULxuJBV_uu2K3OFItlU_iuDsfzhL5_OSkW3ZnfUeFZ06uqsL5e7cc9RWUh3
+Sx7Oa37ybnvPhsK3kj1lmXzgTBs6XGaYEA0C-UW-rwMQE_aomtv5fkhr6lxhVZx4vEbwF_tqNs_-Nxz-qSdyzn4aoIy
+}
+
+!function $ContainersIMG($scale=1)
+!return "<img data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAADQ0lEQVR4nO2bW0hUURSG/1mzR9HJC5qBEGaJZBfpIbtBBRWYXekhCAQJhG4+FkIFUcxLgRREMJVmkkEEvURgmGDUSxfzJYS0zChfotJQh0nGucXaoplYnDMXz4zLDzZnn332+tfae/ZZc84exnbxqjsMwRCEoyYqRz/XQBL1hW59FL8CCMIhCIcgHIJwCMIhK53nXAnrYiUE4RCEQ1Y4taXnwHnoFhLqUXjWIDsyjrdBLV6rT/3vWiBqAlJW7tWDDw32wXOzAsGBjxB1C1BesT6OdT2cHLxjeTnSdl6AKtw091dA8Fu3PqaUHoDvxQ1ddx50g3KLEOjvmJsTQLnLEBr8pOv+nlYEvryCWrIRWWd7J/twm//9kxlt4hob4ojNmQvnoUZkn/kAVbBuvDEUhKd+F3wv6xEa+aoL17mNrzGqYL22YVv+xkjKFZBaVoX0/ZdhW5AHBHyw55ci0P9GXwuPDsH74BjAZQbs+auBUACpG6qRsmoffj06BV/n3eRYAfa8YmScaIezslkP3t/7FMN1pfC9vm1Yg/uyDduyBmuxJmsn7gTYU5BWfg5ZtV1wFG9H2DsA773D8FzfgeCPP/e6UdiGbVmDtViTtdkH+0qoCVBFW5FV+xZpFS4dnK+jCUOXSuDrbI5amzW0VkfT+CRXuLQv9mn5BNj0I20jMmuewb6oBMHvPRhxb4P3fjXC3kHECtZiTdZmH+yLfcYiSVI0SS77dI9OVAiOYbT1PIbr1iDQ9xzxgrXZB/tin+xbx1BWNXsTYP9Hkhttc+mg4g5PdpsrZkmSrEpy0RKrJKmMdsysaYdaunny3OZcCGflHV3ixc+TNn00vGukUnWS5HeLkWtbYrsC1JTBJzpmYlWRfiqziRmfZvcYCcJRZg2s3sWNNWS0o7/7MZIFM7Eqox09DXv+WgFW5IL/EWlcBOFQPH7dsaotEgjCIQiHIByCcAjCIQiHIByCcAjCUdEKzPTsbVVbJBCEo4x2zDjSAseK3Qm/L8Bx8evwxNtrzFaAY8rgEx0zsSqz4om2DzCd+T1BkyizBol670cKGe04vyfYYCyrJhsE4RCEQxAOQTgE4RCEQxAOQThq+n9ppUFWB2A1vwE4nVMFTz+h1AAAAABJRU5ErkJggg=={scale="+$scale+"}>"
+!endfunction
+
+AWSEntityColoring(Containers)
+!define Containers(e_alias, e_label, e_techn) AWSEntity(e_alias, e_label, e_techn, #ED7100, Containers, Containers)
+!define Containers(e_alias, e_label, e_techn, e_descr) AWSEntity(e_alias, e_label, e_techn, e_descr, #ED7100, Containers, Containers)
+!define ContainersParticipant(p_alias, p_label, p_techn) AWSParticipant(p_alias, p_label, p_techn, #ED7100, Containers, Containers)
+!define ContainersParticipant(p_alias, p_label, p_techn, p_descr) AWSParticipant(p_alias, p_label, p_techn, p_descr, #ED7100, Containers, Containers)
