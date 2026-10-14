@@ -188,6 +188,7 @@ Request/response unchanged. For `format ∈ {plantuml, c4}`, sources may contain
 {
   "version": "v23.1",
   "total": 826,
+  "matched": 2,
   "returned": 2,
   "categories": ["Analytics", "Compute", "..."],
   "icons": [
@@ -198,6 +199,9 @@ Request/response unchanged. For `format ∈ {plantuml, c4}`, sources may contain
 }
 ```
 
+`total` counts every icon and group in the shipped set; `matched` counts those passing the filters
+(before `limit`); `returned` is the size of `icons`. Groups expose `<Name>Group(alias, label)`.
+Out-of-range `category`/`query`/`limit` → `INVALID_FORMAT` with detail `<field>: <rule>`.
 `macros` is derived from the manifest name (upstream convention `<Name>`, `<Name>Participant`),
 not parsed from content. Registered always; if the store is `UNVERIFIED` it returns
 `ICONS_UNAVAILABLE`.

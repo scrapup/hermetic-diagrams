@@ -6,12 +6,13 @@ import { ConcurrencyGuard } from '../render/concurrency.js';
 import type { ContainmentReport } from '../containment/types.js';
 import type { FetchLike } from '../render/kroki-client.js';
 import { registerContainmentStatus } from './tools/containment-status.js';
+import { registerListAwsIcons } from './tools/list-aws-icons.js';
 import { registerListFormats } from './tools/list-formats.js';
 import { registerRenderDiagram } from './tools/render-diagram.js';
 
 /**
- * Assemble the MCP server. `containment_status` and `list_formats` are always available; the
- * render tool is registered **only** when containment was proven (fail-closed, `TF-73-03`).
+ * Assemble the MCP server. `containment_status`, `list_formats` and `list_aws_icons` are always
+ * available (discovery never renders); the render tool is registered **only** when containment was proven (fail-closed, `TF-73-03`).
  */
 export function buildServer(
   config: HermeticConfig,
@@ -26,6 +27,7 @@ export function buildServer(
 
   registerContainmentStatus(server, report, iconSet);
   registerListFormats(server);
+  registerListAwsIcons(server, iconSet);
 
   if (report.contained) {
     const guard = new ConcurrencyGuard(config.maxConcurrency);

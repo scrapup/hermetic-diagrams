@@ -30,6 +30,7 @@ describe('buildServer', () => {
     expect(names).toContain('render_diagram');
     expect(names).toContain('list_formats');
     expect(names).toContain('containment_status');
+    expect(names).toContain('list_aws_icons');
   });
 
   it('withholds the render tool when NOT contained (fail-closed)', async () => {
@@ -37,5 +38,6 @@ describe('buildServer', () => {
     const names = await toolNames(server);
     expect(names).not.toContain('render_diagram');
     expect(names).toContain('containment_status');
+    expect(names).toContain('list_aws_icons');
   });
 });
