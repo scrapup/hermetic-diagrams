@@ -62,6 +62,29 @@ a digest:
    new digest (every notation renders; the sink is never reached).
 4. Only then promote. CI enforces this: the `homologation` job is gated on the `containment` job.
 
+## Icon-set homologation (AWS icons)
+
+The AWS icon set under `assets/aws-icons/<tag>/` is vendored from
+[`awslabs/aws-icons-for-plantuml`](https://github.com/awslabs/aws-icons-for-plantuml) and pinned by
+[`aws-icons.lock.json`](aws-icons.lock.json) (tag → commit → tarball sha256 → per-file sha256).
+**Never hand-edit `assets/aws-icons/`** — the shipped-content test and the boot verification reject
+any byte that does not match the lock. To update (normally proposed by the weekly bot PR):
+
+1. Run `npm run icons:update -- <tag>` (builds first). It downloads the commit-pinned tarball,
+   extracts only `dist/**/*.puml` and the licenses, refuses any construct that reads outside the
+   source (`!include*`, `!import`, `!theme`, environment/JSON reads, DTDs, URL schemes), proves the
+   per-category `all.puml` equivalence and rewrites the set and the lock. Any violation exits
+   non-zero naming the file and rule, and nothing is written.
+2. Review the printed report: added, removed and rename candidates, file count and size delta.
+   **Removals are breaking** — diagrams that include a removed icon stop rendering. While the
+   package is pre-1.0, a breaking icon update is a **minor** bump (0.x convention); use
+   `feat(icons)!:` so the change history flags it.
+3. Re-prove containment: `npm run test:golden` **and** `npm run test:integration` (which renders
+   every authoring-guide example) must pass, along with the unit suite (shipped-content scan,
+   guide harness). Fix any guide example that stops rendering in the same PR.
+4. Only then merge — always by a human. CI enforces this: the `homologation` job covers
+   `aws-icons.lock.json` and `assets/**` and is gated on the `containment` job.
+
 ## Commit & PR conventions
 
 - **Conventional Commits**, in English (`feat:`, `fix:`, `chore:`, `test:`, `ci:`, `docs:`).
