@@ -42,6 +42,19 @@ export default [
     },
   },
   {
+    // The AWS Include Resolver is pure: Requester input must never reach a filesystem call
+    // (aws-icons plan §4.5). It only reads the in-memory, boot-verified icon set.
+    files: ['src/pep/aws-include-resolver.ts'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: ['fs', 'node:fs', 'fs/promises', 'node:fs/promises', 'path', 'node:path'],
+        },
+      ],
+    },
+  },
+  {
     files: ['test/**/*.ts', '**/*.spec.ts', '**/*.test.ts'],
     rules: {
       '@typescript-eslint/no-non-null-assertion': 'off',
