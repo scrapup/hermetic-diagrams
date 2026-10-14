@@ -1,0 +1,34 @@
+@startuml c4-component
+!include <C4/C4_Component>
+title hermetic-diagrams — MCP Gateway with AWS icons and guides (C4 Level 3)
+
+Container_Boundary(mcp, "MCP Gateway + PEP") {
+  Component(tools, "Tool Registry", "MCP SDK", "render_diagram, list_formats, containment_status, list_aws_icons, list_authoring_guides, get_authoring_guide")
+  Component(store, "Icon Set Store", "src/aws/icon-set-store.ts", "Loads lock + files at boot; verifies sha256; in-memory allowlist map")
+  Component(catalog, "Icon Catalog", "src/aws/icon-catalog.ts", "Filter/search over the manifest; include lines")
+  Component(guides, "Guide Catalog", "src/guides/guide-catalog.ts", "Loads assets/guides/*.md; injects icon-set version")
+  Component(fmt, "Format Validator", "existing", "Allowlist of notations/outputs")
+  Component(syntax, "Syntax Validator", "existing", "Per-notation syntax")
+  Component(resolver, "AWS Include Resolver", "src/pep/aws-include-resolver.ts", "plantuml/c4 only: parse AWSPuml/ includes, allowlist lookup, inline, dedupe, expanded-size limit")
+  Component(sec, "Security Scanner", "existing", "Runs on the EXPANDED source")
+  Component(client, "Kroki Client", "existing", "POST body to internal Kroki")
+  Component(sanitizer, "Output Sanitizer", "existing", "Keeps only fragments and data:image/*")
+}
+
+ContainerDb(assets, "Shipped assets", "read-only files in image")
+Container(kroki, "Kroki core", "render engine", "SAFE_MODE=SECURE")
+
+Rel(store, assets, "read + sha256 at boot")
+Rel(tools, catalog, "list_aws_icons")
+Rel(catalog, store, "manifest")
+Rel(tools, guides, "list/get guides")
+Rel(guides, store, "icon-set version")
+Rel(tools, fmt, "1. validate format")
+Rel(fmt, syntax, "2. validate syntax (raw source)")
+Rel(syntax, resolver, "3. resolve AWSPuml/ includes")
+Rel(resolver, store, "lookup by exact path")
+Rel(resolver, sec, "4. security scan (expanded)")
+Rel(sec, client, "5. render")
+Rel(client, kroki, "POST", "internal HTTP")
+Rel(client, sanitizer, "6. sanitize SVG")
+@enduml
