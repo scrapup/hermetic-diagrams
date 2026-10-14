@@ -24,6 +24,9 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '.
 const GUIDES_DIR = path.join(ROOT, 'assets', 'guides');
 const SECTIONS = ['## When to use', '## Building blocks', '## Refused here (and what to use instead)', '## Examples'];
 
+/** Notations the bundled engine can rasterize; the others are SVG-only in this server. */
+const PNG_CAPABLE = new Set(['plantuml', 'c4', 'graphviz', 'erd']);
+
 const read = (id: string): string => readFileSync(path.join(GUIDES_DIR, `${id}.md`), 'utf8').replace(/\r\n/g, '\n');
 
 describe('authoring guides — coverage', () => {
@@ -53,8 +56,17 @@ describe.each(GUIDE_IDS)('authoring guide %s', (id) => {
     expect([...positions].sort((a, b) => a - b)).toEqual(positions);
   });
 
-  it('has at least one executable example', () => {
-    expect(extractExamples(markdown).length).toBeGreaterThan(0);
+  it('has at least two executable examples (SVG, plus PNG where the engine supports it)', () => {
+    const examples = extractExamples(markdown);
+    expect(examples.length).toBeGreaterThanOrEqual(2);
+    expect(examples.some((e) => e.output === 'svg')).toBe(true);
+    const notation = examples[0]?.format ?? '';
+    if (PNG_CAPABLE.has(notation)) expect(examples.some((e) => e.output === 'png')).toBe(true);
+    else expect(examples.every((e) => e.output === 'svg')).toBe(true);
+  });
+
+  it('stays concise (RN-16: at most 250 lines)', () => {
+    expect(markdown.split('\n').length).toBeLessThanOrEqual(250);
   });
 
   it('passes every example through the full PEP (format → syntax → resolver → scanner)', async () => {
