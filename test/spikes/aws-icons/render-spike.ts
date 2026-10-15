@@ -2,8 +2,9 @@
  * TF-105-01 spike (throwaway, not part of any vitest project): proves that a self-contained source
  * built from the upstream v23.1 files renders in the pinned Kroki under `KROKI_SAFE_MODE=SECURE`.
  *
- * Runs **inside** the `internal: true` network (one-off container), e.g.:
- *   docker run --rm --network hermetic-diagrams_hermetic \
+ * Runs **inside** the `internal: true` network (one-off container), with `KROKI_BASE_URL` pointing at
+ * the internal Kroki service (`kroki:8000` on that network), e.g.:
+ *   docker run --rm --network hermetic-diagrams_hermetic -e KROKI_BASE_URL=... \
  *     -v "$PWD/test/spikes/aws-icons:/spike:ro" -v "<extracted>/dist:/aws:ro" -v "<out>:/out" \
  *     node:24 node /spike/render-spike.ts /aws /out
  *
@@ -18,7 +19,7 @@ interface SpikeCase {
   readonly build: (read: (p: string) => string) => string;
 }
 
-const KROKI = process.env.KROKI_BASE_URL ?? 'http://kroki:8000';
+const KROKI = process.env['KROKI_BASE_URL'];
 
 const CASES: readonly SpikeCase[] = [
   {
@@ -101,8 +102,8 @@ const CASES: readonly SpikeCase[] = [
 
 async function main(): Promise<void> {
   const [awsRoot, outDir] = process.argv.slice(2);
-  if (awsRoot === undefined || outDir === undefined) {
-    throw new Error('usage: render-spike.ts <aws-dist-dir> <out-dir>');
+  if (awsRoot === undefined || outDir === undefined || KROKI === undefined) {
+    throw new Error('usage: KROKI_BASE_URL=<internal kroki> render-spike.ts <aws-dist-dir> <out-dir>');
   }
   mkdirSync(outDir, { recursive: true });
   const read = (p: string): string => readFileSync(join(awsRoot, p), 'utf8');

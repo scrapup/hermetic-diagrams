@@ -341,7 +341,8 @@ describe('update.ts entry point under Node type stripping', () => {
     const script = fileURLToPath(new URL('./update.ts', import.meta.url));
     const result = await new Promise<{ code: number | null; stderr: string }>((resolve) => {
       execFile(process.execPath, [script], (error, _stdout, stderr) => {
-        resolve({ code: error === null ? 0 : (error as NodeJS.ErrnoException & { code?: number }).code ?? null, stderr });
+        const code: unknown = error === null ? 0 : error.code;
+        resolve({ code: typeof code === 'number' ? code : null, stderr });
       });
     });
     expect(result.code).toBe(2);

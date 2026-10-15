@@ -6,10 +6,16 @@
 import { compareCodePoints } from '../../src/aws/icon-lock.ts';
 import type { FileViolation } from '../../src/aws/vendored-scan.ts';
 
-const SPRITE = /^\s*sprite\s+\$([A-Za-z0-9_]+)/gm;
+/** Applied to a trimmed line, so the pattern needs no leading whitespace (no backtracking). */
+const SPRITE = /^sprite\s+\$([A-Za-z0-9_]+)/;
 
 export function spriteNames(content: string): Set<string> {
-  return new Set(Array.from(content.matchAll(SPRITE), (m) => m[1] ?? ''));
+  const names = new Set<string>();
+  for (const line of content.split('\n')) {
+    const name = SPRITE.exec(line.trimStart())?.[1];
+    if (name !== undefined) names.add(name);
+  }
+  return names;
 }
 
 function sorted(values: Iterable<string>): string[] {

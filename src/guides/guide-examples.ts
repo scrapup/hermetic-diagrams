@@ -35,27 +35,30 @@ function parseInfo(info: string, line: number): { format: DiagramFormat; output:
   return { format, output };
 }
 
+/** Body lines from `start` up to the closing fence; `end` is the fence's index. */
+function readBlock(lines: readonly string[], start: number): { body: string[]; end: number } {
+  const end = lines.indexOf(FENCE, start);
+  if (end === -1) throw new Error('unterminated hermetic-example block');
+  return { body: lines.slice(start, end), end };
+}
+
 export function extractExamples(markdown: string): GuideExample[] {
   const lines = markdown.split(/\r?\n/);
   const examples: GuideExample[] = [];
-  for (let i = 0; i < lines.length; i++) {
+  let i = 0;
+  while (i < lines.length) {
     const opening = lines[i] ?? '';
-    if (!opening.startsWith(`${FENCE}${INFO}`)) continue;
-    const rest = opening.slice(FENCE.length + INFO.length);
-    if (rest.length > 0 && !/^\s/.test(rest)) throw new Error(`line ${i + 1}: malformed info string`);
-    const { format, output } = parseInfo(rest.trim(), i + 1);
-    const body: string[] = [];
-    let closed = false;
-    for (i += 1; i < lines.length; i++) {
-      const current = lines[i] ?? '';
-      if (current === FENCE) {
-        closed = true;
-        break;
-      }
-      body.push(current);
+    const openingLine = i + 1;
+    if (!opening.startsWith(`${FENCE}${INFO}`)) {
+      i += 1;
+      continue;
     }
-    if (!closed) throw new Error(`unterminated hermetic-example block`);
-    examples.push({ format, output, source: body.join('\n'), line: i - body.length });
+    const rest = opening.slice(FENCE.length + INFO.length);
+    if (rest.length > 0 && !/^\s/.test(rest)) throw new Error(`line ${openingLine}: malformed info string`);
+    const { format, output } = parseInfo(rest.trim(), openingLine);
+    const { body, end } = readBlock(lines, i + 1);
+    examples.push({ format, output, source: body.join('\n'), line: openingLine });
+    i = end + 1;
   }
   return examples;
 }
