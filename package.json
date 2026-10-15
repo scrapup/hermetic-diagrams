@@ -56,6 +56,7 @@
     "test": "vitest run --project unit",
     "test:watch": "vitest --project unit",
     "test:coverage": "vitest run --project unit --coverage",
+    "test:perf": "vitest run --project perf",
     "test:golden": "vitest run --project golden",
     "test:integration": "vitest run --project integration --no-file-parallelism",
     "icons:update": "npm run build && node scripts/aws-icons/update.ts",

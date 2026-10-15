@@ -50,12 +50,19 @@ export async function loadGuideCatalog(guidesRoot: string, awsIconsVersion: stri
     let raw: string;
     try {
       raw = await readFile(path.join(guidesRoot, `${id}.md`), 'utf8');
-    } catch {
+    } catch (error) {
+      // Only an absent file is an omission; anything else (permissions, I/O) is reported by code.
+      const code = (error as NodeJS.ErrnoException).code;
+      if (code !== 'ENOENT') logger.warn('guides.unreadable', { id, code });
       continue;
     }
     const markdown = raw.split(AWS_ICONS_VERSION_PLACEHOLDER).join(awsIconsVersion ?? 'unavailable');
     guides.set(id, parseGuide(id, markdown));
   }
-  logger.info('guides.ready', { count: guides.size });
+  // The id set is closed and shipped, so a missing guide is a broken package: warn with the counts.
+  const missing = GUIDE_IDS.length - guides.size;
+  const fields = { count: guides.size, expected: GUIDE_IDS.length, missing };
+  if (missing > 0) logger.warn('guides.ready', fields);
+  else logger.info('guides.ready', fields);
   return { awsIconsVersion, guides };
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { strictScan } from '../../scripts/aws-icons/vendored-scan.ts';
+import { strictScan } from '../aws/vendored-scan.js';
 import { shippedIconSet } from '../../test/helpers/icon-sets.js';
 import { AWS_ENGINE_SHIMS, withEngineShim } from './aws-engine-compat.js';
 import { scanSecurity } from './security-scanner.js';

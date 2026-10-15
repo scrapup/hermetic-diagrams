@@ -7,6 +7,7 @@ import {
   ICON_LOCK_SCHEMA_VERSION,
   ICON_UPSTREAM,
   compareCodePoints,
+  deriveCategories,
   iconSetRoot,
   manifestSha256,
   sha256Hex,
@@ -41,15 +42,8 @@ export function buildLock(input: LockInput): IconLock {
       };
     });
 
-  const categories: Record<string, string[]> = {};
-  for (const file of files) {
-    if (file.category === null) continue;
-    (categories[file.category] ??= []).push(file.name);
-  }
-  const sortedCategories: Record<string, string[]> = {};
-  for (const key of Object.keys(categories).sort(compareCodePoints)) {
-    sortedCategories[key] = categories[key] ?? [];
-  }
+  const derived = deriveCategories(files);
+  const sortedCategories = Object.fromEntries([...derived].sort(([a], [b]) => compareCodePoints(a, b)));
 
   const previous = input.previous;
   const samePin =

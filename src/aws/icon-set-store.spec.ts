@@ -97,17 +97,13 @@ describe('loadIconSet', () => {
     await expect(loadIconSet(iconsRoot, lockPath)).resolves.toMatchObject({ reason: 'hash_mismatch' });
   });
 
-  it('verifies the real shipped set (v23.1) quickly', async () => {
+  it('verifies the real shipped set (v23.1)', async () => {
     const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
-    const started = performance.now();
     const set = await loadIconSet(path.join(root, 'assets', 'aws-icons'), path.join(root, 'aws-icons.lock.json'));
-    const durationMs = performance.now() - started;
     expect(set.state).toBe('VERIFIED');
     expect(set.version).toBe('v23.1');
     expect(set.files.size).toBe(831);
     expect(set.categories.get('Storage')).toContain('Storage/SimpleStorageService.puml');
-    // Generous bound for slow CI disks; the observed local figure is reported in the PR.
-    expect(durationMs).toBeLessThan(2_000);
   });
 });
 

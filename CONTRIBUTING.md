@@ -18,7 +18,8 @@ Thanks for helping keep diagram rendering hermetic. This project has one non-neg
 | `npm run typecheck` | `tsc --noEmit`, strict, zero errors. |
 | `npm run lint` | ESLint, zero errors (incl. `no-explicit-any`). |
 | `npm test` | Unit suite (hermetic, no Docker). |
-| `npm run test:coverage` | Unit suite with the coverage threshold. |
+| `npm run test:coverage` | Unit suite with the coverage threshold (`src/` and `scripts/`). |
+| `npm run test:perf` | Wall-clock SLAs (AWS include resolver P95, icon-set boot); Linux CI step, outside coverage. |
 | `npm run test:integration` | Bring up the compose stack and render every notation e2e (Docker). |
 | `npm run test:golden` | Golden exfiltration test — asserts zero sink hits (Docker). |
 

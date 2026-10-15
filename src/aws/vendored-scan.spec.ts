@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isGuideInclude, scanVendoredContent, strictScan } from './vendored-scan.ts';
+import { isGuideInclude, scanVendoredContent, strictScan } from './vendored-scan.js';
 
 const CLEAN = [
   "' Copyright 2019 Amazon.com. See https://github.com/awslabs/aws-icons-for-plantuml/blob/main/LICENSE",

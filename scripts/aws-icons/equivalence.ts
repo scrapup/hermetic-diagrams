@@ -3,7 +3,7 @@
  * shipped; the resolver synthesizes it by concatenating the category's files. This proves, at update
  * time, that the synthesized aggregate defines exactly the sprites upstream's does.
  */
-import type { FileViolation } from './vendored-scan.ts';
+import type { FileViolation } from '../../src/aws/vendored-scan.ts';
 
 const SPRITE = /^\s*sprite\s+\$([A-Za-z0-9_]+)/gm;
 

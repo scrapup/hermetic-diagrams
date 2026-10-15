@@ -49,6 +49,8 @@ jobs:
           cache: npm
       - run: npm ci --ignore-scripts
       - run: npm run build
+      - name: Performance SLAs (Linux only, outside the coverage gate)
+        run: npm run test:perf
       - name: Integration (compose stack, all notations)
         run: npm run test:integration
       - name: Golden exfiltration (zero sink hits)

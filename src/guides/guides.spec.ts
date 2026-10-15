@@ -2,7 +2,7 @@ import { readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { isGuideInclude, strictScan } from '../../scripts/aws-icons/vendored-scan.ts';
+import { isGuideInclude, strictScan } from '../aws/vendored-scan.js';
 import { shippedIconSet } from '../../test/helpers/icon-sets.js';
 import { loadConfig } from '../config.js';
 import { INPUT_FORMATS } from '../domain.js';

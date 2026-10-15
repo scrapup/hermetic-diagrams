@@ -15,26 +15,28 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { CATEGORY_AGGREGATE, iconPathParts, isIconTag } from '../../src/aws/path-grammar.ts';
-import type { IconLock } from '../../src/aws/icon-lock.ts';
+import { parseLock, type IconLock } from '../../src/aws/icon-lock.ts';
 import { diffCatalog, formatReport, type CatalogDiff } from './catalog-diff.ts';
 import { checkEquivalence } from './equivalence.ts';
-import { extractMembers, listTarball, runTar, selectMembers, verifyExtracted, type TarRunner } from './extract.ts';
-import { downloadTarball, resolveTagCommit, type FetchLike } from './fetch.ts';
+import { extractMembers, listTarball, runTar, selectMembers, upstreamRoot, verifyExtracted, type TarRunner } from './extract.ts';
+import { downloadTarball, resolveTagCommit, type UpstreamFetch } from './fetch.ts';
 import { buildLock, serializeLock } from './lock.ts';
-import { scanVendoredContent, type FileViolation, type SourceScanner } from './vendored-scan.ts';
+import { scanVendoredContent, type FileViolation, type SourceScanner } from '../../src/aws/vendored-scan.ts';
 
 export const LOCK_FILE = 'aws-icons.lock.json';
 export const ICONS_DIR = join('assets', 'aws-icons');
 
 export interface UpdateDeps {
   readonly repoRoot: string;
-  readonly fetchImpl: FetchLike;
+  readonly fetchImpl: UpstreamFetch;
   readonly runTar: TarRunner;
   readonly scanner: SourceScanner;
   /** ISO date (YYYY-MM-DD). */
   readonly today: string;
   readonly tmpRoot?: string;
   readonly token?: string | undefined;
+  /** Test seam for the promotion step (defaults to `fs.rename`). */
+  readonly rename?: Rename;
 }
 
 export type UpdateOutcome =
@@ -49,27 +51,14 @@ export type UpdateOutcome =
     }
   | { readonly ok: false; readonly violations: readonly FileViolation[] };
 
-/** Minimal guard for the previous lock: only what the update needs (full validation is the store's). */
+/** The previous lock through the shared contract guard; anything invalid counts as "no previous lock". */
 export function readPreviousLock(text: string | null): IconLock | null {
   if (text === null) return null;
-  let parsed: unknown;
   try {
-    parsed = JSON.parse(text);
+    return parseLock(JSON.parse(text) as unknown);
   } catch {
     return null;
   }
-  if (typeof parsed !== 'object' || parsed === null) return null;
-  const { tag, commit, tarballSha256, vendoredOn, files } = parsed as Record<string, unknown>;
-  if (
-    typeof tag !== 'string' ||
-    typeof commit !== 'string' ||
-    typeof tarballSha256 !== 'string' ||
-    typeof vendoredOn !== 'string' ||
-    !Array.isArray(files)
-  ) {
-    return null;
-  }
-  return parsed as IconLock;
 }
 
 async function readOptional(path: string): Promise<string | null> {
@@ -128,47 +117,61 @@ export function inspectIconFiles(raw: ReadonlyMap<string, Uint8Array>, scanner: 
   return { files, violations };
 }
 
-async function writeAtomically(
-  repoRoot: string,
-  tag: string,
-  previousTag: string | null,
-  files: ReadonlyMap<string, Uint8Array>,
-  licenses: ReadonlyMap<string, Uint8Array>,
-  lockText: string,
-): Promise<void> {
-  const iconsDir = join(repoRoot, ICONS_DIR);
+type Rename = (from: string, to: string) => Promise<void>;
+
+interface AtomicWrite {
+  readonly repoRoot: string;
+  readonly tag: string;
+  readonly previousTag: string | null;
+  readonly files: ReadonlyMap<string, Uint8Array>;
+  readonly licenses: ReadonlyMap<string, Uint8Array>;
+  readonly lockText: string;
+}
+
+/**
+ * Stages the set and the lock inside the repo, then swaps them in. If the swap fails midway the
+ * previous tag directory is restored, so an interrupted run never leaves the lock pointing at nothing.
+ */
+async function writeAtomically(write: AtomicWrite, move: Rename): Promise<void> {
+  const iconsDir = join(write.repoRoot, ICONS_DIR);
   await mkdir(iconsDir, { recursive: true });
   const nonce = randomBytes(6).toString('hex');
   const staging = join(iconsDir, `.staging-${nonce}`);
-  const target = join(iconsDir, tag);
+  const target = join(iconsDir, write.tag);
   const backup = join(iconsDir, `.previous-${nonce}`);
+  const lockTmp = join(write.repoRoot, `.${LOCK_FILE}.${nonce}`);
+  let hadTarget = false;
+  let promoted = false;
   try {
-    for (const [path, bytes] of [...files, ...licenses]) {
+    for (const [path, bytes] of [...write.files, ...write.licenses]) {
       const dest = join(staging, ...path.split('/'));
       await mkdir(dirname(dest), { recursive: true });
       await writeFile(dest, bytes);
     }
-    const lockTmp = join(repoRoot, `.${LOCK_FILE}.${nonce}`);
-    await writeFile(lockTmp, lockText);
+    await writeFile(lockTmp, write.lockText);
 
-    let hadTarget = true;
     try {
-      await rename(target, backup);
+      await move(target, backup);
+      hadTarget = true;
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
-      hadTarget = false;
     }
-    await rename(staging, target);
-    await rename(lockTmp, join(repoRoot, LOCK_FILE));
+    await move(staging, target);
+    await move(lockTmp, join(write.repoRoot, LOCK_FILE));
+    promoted = true;
     if (hadTarget) await rm(backup, { recursive: true, force: true });
     // One shipped release at a time (RN-07): drop the superseded tag directory. The tag comes from the
     // previous lock, so it is re-checked against the grammar before it is used in a path.
-    if (previousTag !== null && previousTag !== tag && isIconTag(previousTag)) {
-      await rm(join(iconsDir, previousTag), { recursive: true, force: true });
+    if (write.previousTag !== null && write.previousTag !== write.tag && isIconTag(write.previousTag)) {
+      await rm(join(iconsDir, write.previousTag), { recursive: true, force: true });
     }
   } finally {
+    if (!promoted && hadTarget) {
+      await rm(target, { recursive: true, force: true });
+      await rename(backup, target);
+    }
     await rm(staging, { recursive: true, force: true });
-    await rm(join(repoRoot, `.${LOCK_FILE}.${nonce}`), { force: true });
+    await rm(lockTmp, { force: true });
   }
 }
 
@@ -180,10 +183,10 @@ export async function runUpdate(tag: string, deps: UpdateDeps): Promise<UpdateOu
     const tarballPath = join(work, 'upstream.tar.gz');
     await writeFile(tarballPath, tarball.bytes);
 
-    const selection = selectMembers(await listTarball(tarballPath, deps.runTar));
+    const selection = selectMembers(await listTarball(tarballPath, deps.runTar), upstreamRoot(commit));
     if (selection.violations.length > 0) return { ok: false, violations: selection.violations };
 
-    const extractDir = join(work, 'x');
+    const extractDir = join(work, 'extracted');
     await mkdir(extractDir);
     await extractMembers(tarballPath, selection.members, extractDir, join(work, 'members.txt'), deps.runTar);
     const extractViolations = await verifyExtracted(extractDir, selection.members);
@@ -210,7 +213,17 @@ export async function runUpdate(tag: string, deps: UpdateDeps): Promise<UpdateOu
       files: inspected.files,
       previous: previous ?? undefined,
     });
-    await writeAtomically(deps.repoRoot, tag, previous?.tag ?? null, inspected.files, licenses, serializeLock(lock));
+    await writeAtomically(
+      {
+        repoRoot: deps.repoRoot,
+        tag,
+        previousTag: previous?.tag ?? null,
+        files: inspected.files,
+        licenses,
+        lockText: serializeLock(lock),
+      },
+      deps.rename ?? ((from, to) => rename(from, to)),
+    );
     const vendoredBytes = lock.files.reduce((sum, f) => sum + f.bytes, 0);
     const diff = diffCatalog(previous?.files ?? null, lock.files);
     return { ok: true, lock, previous, vendoredBytes, diff, report: formatReport(diff, lock, previous) };
@@ -262,7 +275,7 @@ async function main(argv: readonly string[]): Promise<number> {
     runTar,
     scanner: await loadShippedScanner(repoRoot),
     today: new Date().toISOString().slice(0, 10),
-    token: process.env.GITHUB_TOKEN,
+    token: process.env['GITHUB_TOKEN'],
   });
   if (!outcome.ok) {
     console.error(`icons:update refused ${tag} — nothing was written:\n${formatViolations(outcome.violations)}`);

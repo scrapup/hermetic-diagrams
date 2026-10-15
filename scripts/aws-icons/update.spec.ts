@@ -1,11 +1,12 @@
-import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, readdir, rename, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { sha256Hex } from '../../src/aws/icon-lock.ts';
 import type { TarRunner } from './extract.ts';
-import type { FetchLike } from './fetch.ts';
+import { buildLock, serializeLock } from './lock.ts';
+import type { UpstreamFetch } from './fetch.ts';
 import { formatViolations, inspectIconFiles, publishToGithub, readPreviousLock, runUpdate, type UpdateDeps } from './update.ts';
 
 const FIXTURES = fileURLToPath(new URL('../../test/fixtures/aws-icons/', import.meta.url));
@@ -52,7 +53,7 @@ function fakeTar(archive: Archive): TarRunner {
   };
 }
 
-const fakeFetch: FetchLike = (url) => {
+const fakeFetch: UpstreamFetch = (url) => {
   if (url === `${API}/git/ref/tags/v23.1`) {
     return Promise.resolve(new Response(JSON.stringify({ object: { type: 'commit', sha: COMMIT, url: 'x' } })));
   }
@@ -187,16 +188,14 @@ describe('runUpdate', () => {
   });
 
   it('removes the superseded tag directory and reports the catalog difference', async () => {
-    await runUpdate('v23.1', deps(await cleanArchive()));
-    // Pretend the shipped set was v23.0: rename the dir and the lock tag/root.
-    const lockPath = join(repo, 'aws-icons.lock.json');
-    const old = JSON.parse(await readFile(lockPath, 'utf8')) as Record<string, unknown>;
-    old.tag = 'v23.0';
-    old.root = 'assets/aws-icons/v23.0';
-    old.files = [...(old.files as { path: string }[]), { path: 'Compute/Retired.puml', bytes: 1 }];
-    await writeFile(lockPath, JSON.stringify(old));
-    const { rename } = await import('node:fs/promises');
-    await rename(join(repo, 'assets/aws-icons/v23.1'), join(repo, 'assets/aws-icons/v23.0'));
+    // A valid v23.0 lock that also listed an icon the new release no longer ships.
+    const previousFiles = new Map([
+      ['AWSCommon.puml', enc('old common')],
+      ['Compute/Retired.puml', enc('retired')],
+    ]);
+    const previous = buildLock({ tag: 'v23.0', commit: 'a'.repeat(40), tarballSha256: 'b'.repeat(64), today: '2026-01-01', files: previousFiles });
+    await writeFile(join(repo, 'aws-icons.lock.json'), serializeLock(previous));
+    await mkdir(join(repo, 'assets/aws-icons/v23.0'), { recursive: true });
 
     const outcome = await runUpdate('v23.1', deps(await cleanArchive()));
     expect(await readdir(join(repo, 'assets/aws-icons'))).toEqual(['v23.1']);
@@ -207,16 +206,35 @@ describe('runUpdate', () => {
     expect(outcome.report).toContain(`| Tarball sha256 | \`${sha256Hex(TARBALL)}\` |`);
   });
 
-  it('never removes a directory named by an invalid previous tag', async () => {
+  it('treats an invalid previous lock as absent and never uses its tag in a path', async () => {
     await runUpdate('v23.1', deps(await cleanArchive()));
     const lockPath = join(repo, 'aws-icons.lock.json');
     const old = JSON.parse(await readFile(lockPath, 'utf8')) as Record<string, unknown>;
     old.tag = '..';
     await writeFile(lockPath, JSON.stringify(old));
     await mkdir(join(repo, 'keep'), { recursive: true });
-    await runUpdate('v23.1', deps(await cleanArchive()));
+    const outcome = await runUpdate('v23.1', deps(await cleanArchive()));
+    expect(outcome.ok && outcome.previous).toBe(null);
     expect(await readdir(repo)).toContain('keep');
     expect(await readdir(join(repo, 'assets'))).toEqual(['aws-icons']);
+  });
+
+  it('restores the previous vendoring when the promotion fails midway', async () => {
+    await runUpdate('v23.1', deps(await cleanArchive()));
+    const lockBefore = await readFile(join(repo, 'aws-icons.lock.json'), 'utf8');
+    const commonBefore = await readFile(join(repo, 'assets/aws-icons/v23.1/AWSCommon.puml'));
+    let calls = 0;
+    // 1st rename: current dir -> backup (ok); 2nd: staging -> target (fails).
+    const failing = async (from: string, to: string): Promise<void> => {
+      calls += 1;
+      if (calls === 2) throw Object.assign(new Error('disk full'), { code: 'ENOSPC' });
+      await rename(from, to);
+    };
+    await expect(runUpdate('v23.1', deps(await cleanArchive(), { rename: failing }))).rejects.toThrow('disk full');
+    expect(await readdir(join(repo, 'assets/aws-icons'))).toEqual(['v23.1']);
+    expect(await readFile(join(repo, 'assets/aws-icons/v23.1/AWSCommon.puml'))).toEqual(commonBefore);
+    expect(await readFile(join(repo, 'aws-icons.lock.json'), 'utf8')).toBe(lockBefore);
+    expect(await readdir(repo)).not.toContain(expect.stringMatching(/^\.aws-icons\.lock\.json\./));
   });
 
   it('cleans its temporary work directory', async () => {
@@ -239,16 +257,16 @@ describe('inspectIconFiles', () => {
 });
 
 describe('readPreviousLock', () => {
-  it('returns null for missing, malformed or incomplete locks', () => {
+  it('returns null for missing, malformed or contract-invalid locks', () => {
     expect(readPreviousLock(null)).toBeNull();
     expect(readPreviousLock('{')).toBeNull();
     expect(readPreviousLock('null')).toBeNull();
-    expect(readPreviousLock('{"tag":"v1"}')).toBeNull();
+    expect(readPreviousLock(JSON.stringify({ tag: 'v1', commit: 'c', tarballSha256: 't', vendoredOn: 'd', files: [] }))).toBeNull();
   });
 
-  it('returns the parsed lock when the pin fields are present', () => {
-    const text = JSON.stringify({ tag: 'v1', commit: 'c', tarballSha256: 't', vendoredOn: 'd', files: [] });
-    expect(readPreviousLock(text)).toMatchObject({ tag: 'v1' });
+  it('returns a lock that satisfies the shared contract', () => {
+    const lock = buildLock({ tag: 'v1', commit: 'a'.repeat(40), tarballSha256: 'b'.repeat(64), today: '2026-01-01', files: new Map([['AWSCommon.puml', enc('x')]]) });
+    expect(readPreviousLock(serializeLock(lock))).toEqual(lock);
   });
 });
 

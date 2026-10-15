@@ -34,6 +34,7 @@ describe('loadGuideCatalog', () => {
     dir = await mkdtemp(path.join(tmpdir(), 'hd-guides-'));
   });
   afterEach(async () => {
+    vi.restoreAllMocks();
     await rm(dir, { recursive: true, force: true });
   });
 
@@ -52,12 +53,19 @@ describe('loadGuideCatalog', () => {
     expect(catalog.guides.get('aws-dark')?.summary).toBe('unavailable');
   });
 
-  it('logs guides.ready with the count only', async () => {
+  it('warns guides.ready with counts when guides are missing', async () => {
     const write = vi.spyOn(process.stderr, 'write').mockImplementation(() => true);
     await loadGuideCatalog(dir, 'v23.1');
     const logged = write.mock.calls.map((c) => String(c[0])).join('');
-    write.mockRestore();
-    expect(logged).toContain('"event":"guides.ready","count":0');
+    expect(logged).toContain(`"level":"warn","event":"guides.ready","count":0,"expected":${GUIDE_IDS.length},"missing":${GUIDE_IDS.length}`);
+  });
+
+  it('reports guides.ready at info level when every guide loads', async () => {
+    const write = vi.spyOn(process.stderr, 'write').mockImplementation(() => true);
+    const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
+    await loadGuideCatalog(path.join(root, 'assets', 'guides'), 'v23.1');
+    const logged = write.mock.calls.map((c) => String(c[0])).join('');
+    expect(logged).toContain(`"level":"info","event":"guides.ready","count":${GUIDE_IDS.length},"expected":${GUIDE_IDS.length},"missing":0`);
   });
 
   it('loads all shipped guides', async () => {

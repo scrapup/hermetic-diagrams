@@ -2,13 +2,14 @@ import { mkdir, mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs/promis
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { extractMembers, listTarball, selectMembers, verifyExtracted, type TarRunner } from './extract.ts';
+import { extractMembers, listTarball, selectMembers, upstreamRoot, verifyExtracted, type TarRunner } from './extract.ts';
 
-const R = 'aws-icons-for-plantuml-b788ba79';
+const R = upstreamRoot('b788ba79');
+const select = (names: readonly string[]): ReturnType<typeof selectMembers> => selectMembers(names, R);
 
 describe('selectMembers', () => {
   it('selects dist icons and root licenses, ignoring everything else', () => {
-    const selection = selectMembers([
+    const selection = select([
       `${R}/`,
       `${R}/README.md`,
       `${R}/LICENSE`,
@@ -41,24 +42,27 @@ describe('selectMembers', () => {
     [`${R}\\dist\\x.puml`, 'backslash'],
     [`${R}/dist/Compute/Sub/Deep.puml`, 'path_grammar'],
     [`${R}/dist/Compute/Bad-Name.puml`, 'path_grammar'],
-    ['other-root/dist/X.puml', 'multiple_roots'],
+    ['other-root/dist/X.puml', 'unexpected_root'],
+    ['aws-icons-for-plantuml-0000/dist/X.puml', 'unexpected_root'],
+    ['--to-command=sh/dist/X.puml', 'option_like_name'],
+    ['-x', 'option_like_name'],
   ])('flags %s as %s', (name, rule) => {
-    const selection = selectMembers([`${R}/dist/AWSCommon.puml`, name]);
+    const selection = select([`${R}/dist/AWSCommon.puml`, name]);
     expect(selection.violations).toEqual([{ file: name, rule, line: 0 }]);
     expect(selection.members).not.toContain(name);
   });
 
   it('flags duplicated entries', () => {
     const name = `${R}/dist/AWSCommon.puml`;
-    expect(selectMembers([name, name]).violations).toEqual([{ file: name, rule: 'duplicate_entry', line: 0 }]);
+    expect(select([name, name]).violations).toEqual([{ file: name, rule: 'duplicate_entry', line: 0 }]);
   });
 
   it('flags an empty archive', () => {
-    expect(selectMembers(['']).violations.map((v) => v.rule)).toEqual(['empty_archive']);
+    expect(select(['']).violations.map((v) => v.rule)).toEqual(['empty_archive']);
   });
 
   it('flags an archive with no icons', () => {
-    expect(selectMembers([`${R}/README.md`]).violations.map((v) => v.rule)).toEqual(['no_icons']);
+    expect(select([`${R}/README.md`]).violations.map((v) => v.rule)).toEqual(['no_icons']);
   });
 });
 

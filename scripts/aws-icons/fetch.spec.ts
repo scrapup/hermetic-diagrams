@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { sha256Hex } from '../../src/aws/icon-lock.ts';
-import { downloadTarball, resolveTagCommit, type FetchLike } from './fetch.ts';
+import { MAX_TARBALL_BYTES, downloadTarball, resolveTagCommit, type UpstreamFetch } from './fetch.ts';
 
 const COMMIT = 'b788ba79e8cd028be274761f0fadd8bf3b711acd';
 const TAG_OBJECT = 'a'.repeat(40);
@@ -10,7 +10,7 @@ function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } });
 }
 
-function routes(table: Record<string, Response>): FetchLike & ReturnType<typeof vi.fn> {
+function routes(table: Record<string, Response>): UpstreamFetch & ReturnType<typeof vi.fn> {
   return vi.fn((url: string) => {
     const res = table[url];
     return Promise.resolve(res ?? new Response('not found', { status: 404 }));
@@ -99,5 +99,26 @@ describe('downloadTarball', () => {
 
   it('surfaces HTTP errors', async () => {
     await expect(downloadTarball(COMMIT, routes({}))).rejects.toThrow('HTTP 404');
+  });
+});
+
+describe('timeouts and size cap', () => {
+  it('bounds every request with an abort signal', async () => {
+    const fetchImpl = routes({
+      [`${API}/git/ref/tags/v23.1`]: json({ object: { type: 'commit', sha: COMMIT, url: 'x' } }),
+      [`https://codeload.github.com/awslabs/aws-icons-for-plantuml/tar.gz/${COMMIT}`]: new Response('t'),
+    });
+    await resolveTagCommit('v23.1', fetchImpl);
+    await downloadTarball(COMMIT, fetchImpl);
+    for (const call of fetchImpl.mock.calls) expect((call[1] as RequestInit).signal).toBeInstanceOf(AbortSignal);
+  });
+
+  it('refuses a tarball that declares more than the cap', async () => {
+    const fetchImpl = routes({
+      [`https://codeload.github.com/awslabs/aws-icons-for-plantuml/tar.gz/${COMMIT}`]: new Response('t', {
+        headers: { 'content-length': String(MAX_TARBALL_BYTES + 1) },
+      }),
+    });
+    await expect(downloadTarball(COMMIT, fetchImpl)).rejects.toThrow('tarball larger than');
   });
 });

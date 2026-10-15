@@ -1,5 +1,5 @@
 /**
- * Strict vendored-content scan (`plan.md` §5.5 step 4). The System is a safe source: nothing it ships
+ * Strict vendored-content scan (aws-icons `plan.md` §5.5 step 4). The System is a safe source: nothing it ships
  * and injects into a render may read outside the source. These rules are **stricter** than the
  * Requester-facing Security Scanner — any `!include*` (nesting is refused by design, D-05), any
  * environment/JSON/stdlib read, any DTD, and any URL scheme except the exact SVG namespace literal.
@@ -43,7 +43,6 @@ const STRICT_RULES: readonly StrictRule[] = [
   { name: 'img_scheme', pattern: /<img:\s*[a-z][a-z0-9+.-]*:/i },
 ];
 
-const URL_SCHEME = /[a-z][a-z0-9+.-]*:\/\//i;
 
 /**
  * Includes a **guide** may show (aws-icons `plan.md` §5.2): the reserved `AWSPuml/` prefix and the
@@ -75,7 +74,8 @@ export function strictScan(content: string, options: StrictScanOptions = {}): St
       if (rule.name === 'include' && options.allowInclude?.(line) === true) continue;
       if (rule.pattern.test(line)) violations.push({ rule: rule.name, line: index + 1 });
     }
-    if (URL_SCHEME.test(line.split(SVG_NAMESPACE_LITERAL).join(''))) {
+    // `://` is enough to flag an address, and `includes` stays linear on very long lines.
+    if (line.split(SVG_NAMESPACE_LITERAL).join('').includes('://')) {
       violations.push({ rule: 'url_scheme', line: index + 1 });
     }
   });

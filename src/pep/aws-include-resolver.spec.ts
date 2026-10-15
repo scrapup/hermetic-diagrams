@@ -286,3 +286,18 @@ describe('resolveAwsIncludes — real shipped set', () => {
     expect(sprites.length).toBe(set.categories.get('Storage')?.length);
   });
 });
+
+describe('resolveAwsIncludes — linear time (no regex backtracking on long lines)', () => {
+  it.each([
+    ['an include naming the upstream without an address', `!include aws-icons-for-plantuml${'a'.repeat(250_000)}`],
+    ['a long AWSPuml mention', `!include AWSPuml/${'a'.repeat(250_000)}`],
+  ])('handles %s in under 200 ms', (_label, line) => {
+    const started = performance.now();
+    try {
+      resolveAwsIncludes('plantuml', src(line), SET, { ...LIMITS, maxSourceBytes: 1e7, maxExpandedSourceBytes: 1e7 });
+    } catch {
+      // Refusal or pass-through are both fine; only the time matters here.
+    }
+    expect(performance.now() - started).toBeLessThan(200);
+  });
+});

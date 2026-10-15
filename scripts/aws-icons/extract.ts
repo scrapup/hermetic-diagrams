@@ -10,7 +10,7 @@ import { lstat, readdir, writeFile } from 'node:fs/promises';
 import { join, relative, sep } from 'node:path';
 import { promisify } from 'node:util';
 import { isIconPath } from '../../src/aws/path-grammar.ts';
-import type { FileViolation } from './vendored-scan.ts';
+import type { FileViolation } from '../../src/aws/vendored-scan.ts';
 
 /** Runs `tar` with the given arguments and resolves to its stdout. */
 export type TarRunner = (args: readonly string[]) => Promise<string>;
@@ -36,15 +36,25 @@ export interface MemberSelection {
   readonly violations: readonly FileViolation[];
 }
 
+/** codeload's top-level directory for a commit-pinned tarball. */
+export function upstreamRoot(commit: string): string {
+  return `aws-icons-for-plantuml-${commit}`;
+}
+
 function nameViolation(name: string): string | null {
+  // `tar -T` reads list lines starting with '-' as options (CWE-88): never let one through.
+  if (name.startsWith('-')) return 'option_like_name';
   if (name.startsWith('/') || /^[A-Za-z]:/.test(name)) return 'absolute_path';
   if (name.includes('\\')) return 'backslash';
   if (name.split('/').includes('..')) return 'parent_segment';
   return null;
 }
 
-/** Validates every archive name and picks `dist/**\/*.puml` + root `LICENSE*`. */
-export function selectMembers(names: readonly string[]): MemberSelection {
+/**
+ * Validates every archive name and picks `dist/**\/*.puml` + root `LICENSE*`. Every entry must live
+ * under `expectedRoot` (the commit-pinned directory codeload generates).
+ */
+export function selectMembers(names: readonly string[], expectedRoot: string): MemberSelection {
   const violations: FileViolation[] = [];
   const members: string[] = [];
   const icons: string[] = [];
@@ -66,11 +76,11 @@ export function selectMembers(names: readonly string[]): MemberSelection {
     seen.add(name);
 
     const top = name.split('/')[0] ?? '';
-    root ??= top;
-    if (top !== root) {
-      violations.push({ file: name, rule: 'multiple_roots', line: 0 });
+    if (top !== expectedRoot) {
+      violations.push({ file: name, rule: 'unexpected_root', line: 0 });
       continue;
     }
+    root = top;
     if (name.endsWith('/')) continue;
 
     const rest = name.slice(root.length + 1);

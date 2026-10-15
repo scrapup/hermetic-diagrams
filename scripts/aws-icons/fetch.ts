@@ -8,11 +8,16 @@
 import { ICON_UPSTREAM, sha256Hex } from '../../src/aws/icon-lock.ts';
 import { isIconTag } from '../../src/aws/path-grammar.ts';
 
-export type FetchLike = (url: string, init?: RequestInit) => Promise<Response>;
+export type UpstreamFetch = (url: string, init?: RequestInit) => Promise<Response>;
 
 const API = `https://api.github.com/repos/${ICON_UPSTREAM}`;
 const CODELOAD = `https://codeload.github.com/${ICON_UPSTREAM}/tar.gz`;
 const COMMIT_SHA = /^[0-9a-f]{40}$/;
+const USER_AGENT = 'hermetic-diagrams-icons-update';
+const API_TIMEOUT_MS = 15_000;
+const TARBALL_TIMEOUT_MS = 120_000;
+/** v23.1 is ~37.6 MB; anything far larger is not an icon release. */
+export const MAX_TARBALL_BYTES = 256 * 1024 * 1024;
 
 export interface TarballDownload {
   readonly bytes: Uint8Array;
@@ -22,7 +27,7 @@ export interface TarballDownload {
 function headers(token: string | undefined): Record<string, string> {
   const h: Record<string, string> = {
     accept: 'application/vnd.github+json',
-    'user-agent': 'hermetic-diagrams-icons-update',
+    'user-agent': USER_AGENT,
   };
   if (token !== undefined && token.length > 0) h.authorization = `Bearer ${token}`;
   return h;
@@ -45,15 +50,15 @@ function readGitObject(body: unknown): GitObject {
   return { type, sha, url };
 }
 
-async function getJson(fetchImpl: FetchLike, url: string, token: string | undefined): Promise<unknown> {
-  const res = await fetchImpl(url, { headers: headers(token) });
+async function getJson(fetchImpl: UpstreamFetch, url: string, token: string | undefined): Promise<unknown> {
+  const res = await fetchImpl(url, { headers: headers(token), signal: AbortSignal.timeout(API_TIMEOUT_MS) });
   if (!res.ok) throw new Error(`fetch: GitHub API returned HTTP ${res.status} for ${url}`);
   const body: unknown = await res.json();
   return body;
 }
 
 /** Tag → 40-hex commit sha; dereferences annotated tags (one level, as git does for releases). */
-export async function resolveTagCommit(tag: string, fetchImpl: FetchLike, token?: string): Promise<string> {
+export async function resolveTagCommit(tag: string, fetchImpl: UpstreamFetch, token?: string): Promise<string> {
   if (!isIconTag(tag)) throw new Error(`fetch: invalid tag "${tag}" (expected v<major>[.<minor>…])`);
   let object = readGitObject(await getJson(fetchImpl, `${API}/git/ref/tags/${tag}`, token));
   if (object.type === 'tag') {
@@ -70,10 +75,16 @@ export async function resolveTagCommit(tag: string, fetchImpl: FetchLike, token?
 }
 
 /** Downloads the commit-pinned tarball into memory and fingerprints it. */
-export async function downloadTarball(commit: string, fetchImpl: FetchLike): Promise<TarballDownload> {
+export async function downloadTarball(commit: string, fetchImpl: UpstreamFetch): Promise<TarballDownload> {
   if (!COMMIT_SHA.test(commit)) throw new Error('fetch: invalid commit sha');
-  const res = await fetchImpl(`${CODELOAD}/${commit}`, { headers: { 'user-agent': 'hermetic-diagrams-icons-update' } });
+  const res = await fetchImpl(`${CODELOAD}/${commit}`, {
+    headers: { 'user-agent': USER_AGENT },
+    signal: AbortSignal.timeout(TARBALL_TIMEOUT_MS),
+  });
   if (!res.ok) throw new Error(`fetch: tarball download returned HTTP ${res.status}`);
+  const declared = Number(res.headers.get('content-length') ?? '0');
+  if (declared > MAX_TARBALL_BYTES) throw new Error(`fetch: tarball larger than ${MAX_TARBALL_BYTES} bytes`);
   const bytes = new Uint8Array(await res.arrayBuffer());
+  if (bytes.byteLength > MAX_TARBALL_BYTES) throw new Error(`fetch: tarball larger than ${MAX_TARBALL_BYTES} bytes`);
   return { bytes, sha256: sha256Hex(bytes) };
 }

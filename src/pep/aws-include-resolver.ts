@@ -44,7 +44,11 @@ const RESOLVABLE_INCLUDE = /^!(include|include_once)\s+AWSPuml\/(\S+)$/;
 const ANY_INCLUDE = /^!include\w*\b/i;
 /** Upstream's documented by-address form, refused with the reserved-convention hint. */
 const UPSTREAM_URL = /aws-icons-for-plantuml/i;
-const URL_SCHEME = /[a-z][a-z0-9+.-]*:\/\//i;
+
+/** Linear-time check for an address: `://` is the only thing a URL needs here (no backtracking). */
+function hasAddress(line: string): boolean {
+  return line.includes('://');
+}
 
 const MAX_ECHO = 120;
 
@@ -123,6 +127,63 @@ function needsCommon(path: string): boolean {
   return path.includes('/') || NEEDS_COMMON_BASES.has(path);
 }
 
+/**
+ * Classifies one Requester line. Returns `null` for lines the resolver leaves alone, the
+ * grammar-valid path of a resolvable include, or throws the refusal for anything else naming
+ * `AWSPuml` (or upstream's by-address form).
+ */
+function includedPath(trimmed: string, iconSet: IconSet): string | null {
+  if (isComment(trimmed)) return null;
+  if (ANY_INCLUDE.test(trimmed) && UPSTREAM_URL.test(trimmed) && hasAddress(trimmed)) throw upstreamByAddress();
+  if (!MENTION.test(trimmed)) return null;
+  if (REDEFINITION.test(trimmed)) throw redefinition();
+  if (iconSet.state !== 'VERIFIED') throw iconsUnavailable();
+
+  const path = RESOLVABLE_INCLUDE.exec(trimmed)?.[2];
+  if (path === undefined) throw unknownReference(trimmed.replace(/^.*?awspuml\/?/i, ''), iconSet.version);
+  if (!isIconPath(path)) throw unknownReference(path, iconSet.version);
+  return path;
+}
+
+/** Order rule, dedupe and the incremental byte/include budget of one expansion. */
+class Expansion {
+  private readonly seen = new Set<string>();
+  private commonSeen = false;
+  bytes: number;
+
+  constructor(
+    source: string,
+    private readonly limits: AwsResolverLimits,
+  ) {
+    this.bytes = Buffer.byteLength(source, 'utf8');
+  }
+
+  get includes(): number {
+    return this.seen.size;
+  }
+
+  /** Text that replaces `line`: the inlined content, or `''` for a duplicate (line slot kept). */
+  admit(path: string, content: string, line: string): string {
+    if (path === COMMON) this.commonSeen = true;
+    else if (needsCommon(path) && !this.commonSeen) throw orderError(path);
+
+    const lineBytes = Buffer.byteLength(line, 'utf8');
+    if (this.seen.has(path)) {
+      this.bytes -= lineBytes;
+      return '';
+    }
+    this.seen.add(path);
+    if (this.seen.size > this.limits.maxAwsIncludes) {
+      throw tooLarge(this.limits, `more than ${this.limits.maxAwsIncludes} distinct includes`);
+    }
+    this.bytes += Buffer.byteLength(content, 'utf8') - lineBytes;
+    if (this.bytes > this.limits.maxExpandedSourceBytes) {
+      throw tooLarge(this.limits, `more than ${this.limits.maxExpandedSourceBytes} bytes`);
+    }
+    return content;
+  }
+}
+
 export function resolveAwsIncludes(
   format: DiagramFormat,
   source: string,
@@ -135,53 +196,15 @@ export function resolveAwsIncludes(
 
   // Alternating [line, separator, line, separator, …, line]: CRLF/LF are kept exactly as given.
   const parts = source.split(/(\r?\n)/);
-  const seen = new Set<string>();
-  let commonSeen = false;
-  let expandedBytes = Buffer.byteLength(source, 'utf8');
-
+  const expansion = new Expansion(source, limits);
   for (let i = 0; i < parts.length; i += 2) {
     const line = parts[i] ?? '';
-    const trimmed = line.trim();
-    if (isComment(trimmed)) continue;
-
-    if (ANY_INCLUDE.test(trimmed) && UPSTREAM_URL.test(trimmed) && URL_SCHEME.test(trimmed)) {
-      throw upstreamByAddress();
-    }
-    if (!MENTION.test(trimmed)) continue;
-    if (REDEFINITION.test(trimmed)) throw redefinition();
-    if (iconSet.state !== 'VERIFIED') throw iconsUnavailable();
-
-    const match = RESOLVABLE_INCLUDE.exec(trimmed);
-    const path = match?.[2];
-    if (path === undefined) {
-      const rest = trimmed.replace(/^.*?awspuml\/?/i, '');
-      throw unknownReference(rest, iconSet.version);
-    }
-    if (!isIconPath(path)) throw unknownReference(path, iconSet.version);
+    const path = includedPath(line.trim(), iconSet);
+    if (path === null) continue;
     const verified = lookup(path, iconSet);
     if (verified === undefined) throw unknownReference(path, iconSet.version);
-    const content = withEngineShim(path, verified);
-
-    if (path === COMMON) commonSeen = true;
-    else if (needsCommon(path) && !commonSeen) throw orderError(path);
-
-    const lineBytes = Buffer.byteLength(line, 'utf8');
-    if (seen.has(path)) {
-      // Duplicate: keep the line slot (empty) so the Requester's line structure is preserved.
-      parts[i] = '';
-      expandedBytes -= lineBytes;
-      continue;
-    }
-    seen.add(path);
-    if (seen.size > limits.maxAwsIncludes) {
-      throw tooLarge(limits, `more than ${limits.maxAwsIncludes} distinct includes`);
-    }
-    expandedBytes += Buffer.byteLength(content, 'utf8') - lineBytes;
-    if (expandedBytes > limits.maxExpandedSourceBytes) {
-      throw tooLarge(limits, `more than ${limits.maxExpandedSourceBytes} bytes`);
-    }
-    parts[i] = content;
+    parts[i] = expansion.admit(path, withEngineShim(path, verified), line);
   }
 
-  return { source: parts.join(''), includes: seen.size, expandedBytes };
+  return { source: parts.join(''), includes: expansion.includes, expandedBytes: expansion.bytes };
 }
