@@ -40,6 +40,23 @@ describe('AWS include resolver performance', () => {
   });
 });
 
+describe('AWS include resolver — linear time on very long lines', () => {
+  const set = { state: 'VERIFIED' as const, version: 'v23.1', files: new Map<string, string>(), categories: new Map<string, readonly string[]>(), failedFiles: 0 };
+  const limits = { maxSourceBytes: 1e7, maxExpandedSourceBytes: 1e7, maxAwsIncludes: 200 };
+
+  it.each([
+    ['an include naming the upstream without an address', `!include aws-icons-for-plantuml${'a'.repeat(250_000)}`, false],
+    ['a long AWSPuml mention', `!include AWSPuml/${'a'.repeat(250_000)}`, true],
+  ])('handles %s (250k chars) in under 200 ms', (_label, line, refused) => {
+    const source = `@startuml\n${line}\n@enduml`;
+    const started = performance.now();
+    const run = (): unknown => resolveAwsIncludes('plantuml', source, set, limits);
+    if (refused) expect(run).toThrow();
+    else expect(run).not.toThrow();
+    expect(performance.now() - started).toBeLessThan(200);
+  });
+});
+
 describe('Icon Set Store boot performance', () => {
   it('verifies the shipped set (831 files) in under 2 s', async () => {
     const root = fileURLToPath(new URL('../../', import.meta.url));

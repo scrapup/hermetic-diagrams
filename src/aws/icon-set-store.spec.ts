@@ -4,8 +4,8 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { buildLock, serializeLock } from '../../scripts/aws-icons/lock.ts';
-import { manifestSha256, type IconLock } from './icon-lock.js';
-import { awsIconsStatus, bootIconSet, loadIconSet, parseLock } from './icon-set-store.js';
+import { manifestSha256, parseLock, type IconLock } from './icon-lock.js';
+import { awsIconsStatus, bootIconSet, loadIconSet } from './icon-set-store.js';
 
 const FILES: Record<string, string> = {
   'AWSCommon.puml': '!define AWSEntity(a) a\n',

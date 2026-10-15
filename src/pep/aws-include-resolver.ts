@@ -149,17 +149,21 @@ function includedPath(trimmed: string, iconSet: IconSet): string | null {
 class Expansion {
   private readonly seen = new Set<string>();
   private commonSeen = false;
-  bytes: number;
+  private expandedBytes: number;
 
   constructor(
     source: string,
     private readonly limits: AwsResolverLimits,
   ) {
-    this.bytes = Buffer.byteLength(source, 'utf8');
+    this.expandedBytes = Buffer.byteLength(source, 'utf8');
   }
 
   get includes(): number {
     return this.seen.size;
+  }
+
+  get bytes(): number {
+    return this.expandedBytes;
   }
 
   /** Text that replaces `line`: the inlined content, or `''` for a duplicate (line slot kept). */
@@ -169,15 +173,15 @@ class Expansion {
 
     const lineBytes = Buffer.byteLength(line, 'utf8');
     if (this.seen.has(path)) {
-      this.bytes -= lineBytes;
+      this.expandedBytes -= lineBytes;
       return '';
     }
     this.seen.add(path);
     if (this.seen.size > this.limits.maxAwsIncludes) {
       throw tooLarge(this.limits, `more than ${this.limits.maxAwsIncludes} distinct includes`);
     }
-    this.bytes += Buffer.byteLength(content, 'utf8') - lineBytes;
-    if (this.bytes > this.limits.maxExpandedSourceBytes) {
+    this.expandedBytes += Buffer.byteLength(content, 'utf8') - lineBytes;
+    if (this.expandedBytes > this.limits.maxExpandedSourceBytes) {
       throw tooLarge(this.limits, `more than ${this.limits.maxExpandedSourceBytes} bytes`);
     }
     return content;

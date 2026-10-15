@@ -1,4 +1,4 @@
-import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -57,7 +57,17 @@ describe('loadGuideCatalog', () => {
     const write = vi.spyOn(process.stderr, 'write').mockImplementation(() => true);
     await loadGuideCatalog(dir, 'v23.1');
     const logged = write.mock.calls.map((c) => String(c[0])).join('');
-    expect(logged).toContain(`"level":"warn","event":"guides.ready","count":0,"expected":${GUIDE_IDS.length},"missing":${GUIDE_IDS.length}`);
+    expect(logged).toContain(`"level":"warn","event":"guides.ready","count":0,"expected":${GUIDE_IDS.length},"missing":${GUIDE_IDS.length},"missingIds":"${GUIDE_IDS.join(',')}"`);
+  });
+
+  it('reports an unreadable guide by id and errno code, never by path', async () => {
+    const write = vi.spyOn(process.stderr, 'write').mockImplementation(() => true);
+    await mkdir(path.join(dir, 'aws-dark.md'));
+    await loadGuideCatalog(dir, 'v23.1');
+    const logged = write.mock.calls.map((c) => String(c[0])).join('');
+    expect(logged).toContain('"event":"guides.unreadable","id":"aws-dark","code":"EISDIR"');
+    expect(logged).not.toContain(dir);
+    expect(logged).toContain('"missingIds":"');
   });
 
   it('reports guides.ready at info level when every guide loads', async () => {

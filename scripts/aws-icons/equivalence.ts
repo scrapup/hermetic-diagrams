@@ -3,6 +3,7 @@
  * shipped; the resolver synthesizes it by concatenating the category's files. This proves, at update
  * time, that the synthesized aggregate defines exactly the sprites upstream's does.
  */
+import { compareCodePoints } from '../../src/aws/icon-lock.ts';
 import type { FileViolation } from '../../src/aws/vendored-scan.ts';
 
 const SPRITE = /^\s*sprite\s+\$([A-Za-z0-9_]+)/gm;
@@ -12,7 +13,7 @@ export function spriteNames(content: string): Set<string> {
 }
 
 function sorted(values: Iterable<string>): string[] {
-  return [...values].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
+  return [...values].sort(compareCodePoints);
 }
 
 /**

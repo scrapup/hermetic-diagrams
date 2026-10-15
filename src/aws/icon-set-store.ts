@@ -13,9 +13,6 @@ import { parseLock, sha256Hex, type IconLock } from './icon-lock.js';
  * `ICONS_UNAVAILABLE`) while every other notation keeps working.
  */
 
-/** Re-exported so the store stays the single import for boot-time consumers. */
-export { parseLock };
-
 export type IconSetState = 'VERIFIED' | 'UNVERIFIED';
 export type IconSetFailure = 'lock_invalid' | 'file_missing' | 'hash_mismatch';
 

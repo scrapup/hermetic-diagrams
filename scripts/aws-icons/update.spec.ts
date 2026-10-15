@@ -4,14 +4,14 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { sha256Hex } from '../../src/aws/icon-lock.ts';
-import type { TarRunner } from './extract.ts';
-import { buildLock, serializeLock } from './lock.ts';
+import { upstreamRoot, type TarRunner } from './extract.ts';
 import type { UpstreamFetch } from './fetch.ts';
+import { buildLock, serializeLock } from './lock.ts';
 import { formatViolations, inspectIconFiles, publishToGithub, readPreviousLock, runUpdate, type UpdateDeps } from './update.ts';
 
 const FIXTURES = fileURLToPath(new URL('../../test/fixtures/aws-icons/', import.meta.url));
 const COMMIT = 'b788ba79e8cd028be274761f0fadd8bf3b711acd';
-const ROOT = `aws-icons-for-plantuml-${COMMIT}`;
+const ROOT = upstreamRoot(COMMIT);
 const API = 'https://api.github.com/repos/awslabs/aws-icons-for-plantuml';
 const TARBALL = new TextEncoder().encode('fake-tarball');
 
@@ -219,22 +219,51 @@ describe('runUpdate', () => {
     expect(await readdir(join(repo, 'assets'))).toEqual(['aws-icons']);
   });
 
-  it('restores the previous vendoring when the promotion fails midway', async () => {
+  it.each([
+    [2, 'staging -> target'],
+    [3, 'lock tmp -> lock'],
+  ])('restores the previous vendoring when rename #%i (%s) fails', async (failAt) => {
     await runUpdate('v23.1', deps(await cleanArchive()));
     const lockBefore = await readFile(join(repo, 'aws-icons.lock.json'), 'utf8');
     const commonBefore = await readFile(join(repo, 'assets/aws-icons/v23.1/AWSCommon.puml'));
     let calls = 0;
-    // 1st rename: current dir -> backup (ok); 2nd: staging -> target (fails).
+    // Rename #1 moves the current dir to the backup; #2 promotes staging; #3 publishes the lock.
     const failing = async (from: string, to: string): Promise<void> => {
       calls += 1;
-      if (calls === 2) throw Object.assign(new Error('disk full'), { code: 'ENOSPC' });
+      if (calls === failAt) throw Object.assign(new Error('disk full'), { code: 'ENOSPC' });
       await rename(from, to);
     };
     await expect(runUpdate('v23.1', deps(await cleanArchive(), { rename: failing }))).rejects.toThrow('disk full');
     expect(await readdir(join(repo, 'assets/aws-icons'))).toEqual(['v23.1']);
     expect(await readFile(join(repo, 'assets/aws-icons/v23.1/AWSCommon.puml'))).toEqual(commonBefore);
     expect(await readFile(join(repo, 'aws-icons.lock.json'), 'utf8')).toBe(lockBefore);
-    expect(await readdir(repo)).not.toContain(expect.stringMatching(/^\.aws-icons\.lock\.json\./));
+    expect((await readdir(repo)).filter((n) => n.startsWith('.aws-icons.lock.json.'))).toEqual([]);
+  });
+
+  it('removes a new tag directory when publishing the lock fails (no previous set)', async () => {
+    let calls = 0;
+    // Rename #1 (target -> backup) hits ENOENT; #2 promotes staging; #3 (lock) fails.
+    const failing = async (from: string, to: string): Promise<void> => {
+      calls += 1;
+      if (calls === 3) throw Object.assign(new Error('disk full'), { code: 'ENOSPC' });
+      await rename(from, to);
+    };
+    await expect(runUpdate('v23.1', deps(await cleanArchive(), { rename: failing }))).rejects.toThrow('disk full');
+    expect(await readdir(join(repo, 'assets/aws-icons'))).toEqual([]);
+    await expect(readFile(join(repo, 'aws-icons.lock.json'))).rejects.toThrow();
+  });
+
+  it('reports both errors and keeps the original as cause when the rollback itself fails', async () => {
+    await runUpdate('v23.1', deps(await cleanArchive()));
+    let calls = 0;
+    const failing = async (from: string, to: string): Promise<void> => {
+      calls += 1;
+      if (calls >= 2) throw Object.assign(new Error(`fail #${calls}`), { code: 'EIO' });
+      await rename(from, to);
+    };
+    const error: unknown = await runUpdate('v23.1', deps(await cleanArchive(), { rename: failing })).catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(AggregateError);
+    expect((error as AggregateError).cause).toMatchObject({ message: 'fail #2' });
   });
 
   it('cleans its temporary work directory', async () => {
@@ -303,5 +332,19 @@ describe('publishToGithub', () => {
       return Promise.resolve();
     });
     expect(writes).toEqual([]);
+  });
+});
+
+describe('update.ts entry point under Node type stripping', () => {
+  it('loads its whole import graph and prints usage without a tag (exit 2)', async () => {
+    const { execFile } = await import('node:child_process');
+    const script = fileURLToPath(new URL('./update.ts', import.meta.url));
+    const result = await new Promise<{ code: number | null; stderr: string }>((resolve) => {
+      execFile(process.execPath, [script], (error, _stdout, stderr) => {
+        resolve({ code: error === null ? 0 : (error as NodeJS.ErrnoException & { code?: number }).code ?? null, stderr });
+      });
+    });
+    expect(result.code).toBe(2);
+    expect(result.stderr).toContain('usage: npm run icons:update');
   });
 });

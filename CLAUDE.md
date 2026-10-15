@@ -71,6 +71,9 @@ Invariants of the entry point:
 - The image is built on the user's machine from the published package: the slim `Dockerfile`
   copies the prebuilt `dist/` and runs `npm ci --omit=dev` against `npm-shrinkwrap.json`, which the
   release job generates from `package-lock.json`.
+- `src/aws/icon-lock.ts`, `path-grammar.ts` and `vendored-scan.ts` are a shared kernel that
+  `scripts/aws-icons/` imports under Node's native type stripping: keep them dependency-free and
+  import siblings with the `.ts` suffix (rewritten to `.js` on build), never `.js`.
 - release-please bumps the version in `package.json`, the plugin manifests, `.mcp.json` and the
   three READMEs.
 

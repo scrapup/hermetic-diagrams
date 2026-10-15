@@ -43,7 +43,6 @@ const STRICT_RULES: readonly StrictRule[] = [
   { name: 'img_scheme', pattern: /<img:\s*[a-z][a-z0-9+.-]*:/i },
 ];
 
-
 /**
  * Includes a **guide** may show (aws-icons `plan.md` §5.2): the reserved `AWSPuml/` prefix and the
  * engine's bundled stdlib (`<C4/…>`, `<awslib/…>`). Vendored icon files may include nothing.

@@ -14,14 +14,14 @@ import { appendFile, mkdir, mkdtemp, readFile, rename, rm, writeFile } from 'nod
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { CATEGORY_AGGREGATE, iconPathParts, isIconTag } from '../../src/aws/path-grammar.ts';
 import { parseLock, type IconLock } from '../../src/aws/icon-lock.ts';
+import { CATEGORY_AGGREGATE, iconPathParts, isIconTag } from '../../src/aws/path-grammar.ts';
+import { scanVendoredContent, type FileViolation, type SourceScanner } from '../../src/aws/vendored-scan.ts';
 import { diffCatalog, formatReport, type CatalogDiff } from './catalog-diff.ts';
 import { checkEquivalence } from './equivalence.ts';
 import { extractMembers, listTarball, runTar, selectMembers, upstreamRoot, verifyExtracted, type TarRunner } from './extract.ts';
 import { downloadTarball, resolveTagCommit, type UpstreamFetch } from './fetch.ts';
 import { buildLock, serializeLock } from './lock.ts';
-import { scanVendoredContent, type FileViolation, type SourceScanner } from '../../src/aws/vendored-scan.ts';
 
 export const LOCK_FILE = 'aws-icons.lock.json';
 export const ICONS_DIR = join('assets', 'aws-icons');
@@ -129,8 +129,9 @@ interface AtomicWrite {
 }
 
 /**
- * Stages the set and the lock inside the repo, then swaps them in. If the swap fails midway the
- * previous tag directory is restored, so an interrupted run never leaves the lock pointing at nothing.
+ * Stages the set and the lock inside the repo, then swaps them in. If the swap fails midway, the new
+ * tag directory is removed and the previous one restored, so an interrupted run never leaves the lock
+ * pointing at nothing (or a second tag directory behind). The original failure is always rethrown.
  */
 async function writeAtomically(write: AtomicWrite, move: Rename): Promise<void> {
   const iconsDir = join(write.repoRoot, ICONS_DIR);
@@ -141,7 +142,7 @@ async function writeAtomically(write: AtomicWrite, move: Rename): Promise<void> 
   const backup = join(iconsDir, `.previous-${nonce}`);
   const lockTmp = join(write.repoRoot, `.${LOCK_FILE}.${nonce}`);
   let hadTarget = false;
-  let promoted = false;
+  let targetWritten = false;
   try {
     for (const [path, bytes] of [...write.files, ...write.licenses]) {
       const dest = join(staging, ...path.split('/'));
@@ -157,21 +158,41 @@ async function writeAtomically(write: AtomicWrite, move: Rename): Promise<void> 
       if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
     }
     await move(staging, target);
+    targetWritten = true;
     await move(lockTmp, join(write.repoRoot, LOCK_FILE));
-    promoted = true;
-    if (hadTarget) await rm(backup, { recursive: true, force: true });
-    // One shipped release at a time (RN-07): drop the superseded tag directory. The tag comes from the
-    // previous lock, so it is re-checked against the grammar before it is used in a path.
-    if (write.previousTag !== null && write.previousTag !== write.tag && isIconTag(write.previousTag)) {
-      await rm(join(iconsDir, write.previousTag), { recursive: true, force: true });
-    }
+  } catch (error) {
+    await rollBack({ target, backup, hadTarget, targetWritten, tag: write.tag }, move, error);
+    throw error;
   } finally {
-    if (!promoted && hadTarget) {
-      await rm(target, { recursive: true, force: true });
-      await rename(backup, target);
-    }
     await rm(staging, { recursive: true, force: true });
     await rm(lockTmp, { force: true });
+  }
+
+  if (hadTarget) await rm(backup, { recursive: true, force: true });
+  // One shipped release at a time (RN-07): drop the superseded tag directory. The tag comes from the
+  // previous lock, so it is re-checked against the grammar before it is used in a path.
+  if (write.previousTag !== null && write.previousTag !== write.tag && isIconTag(write.previousTag)) {
+    await rm(join(iconsDir, write.previousTag), { recursive: true, force: true });
+  }
+}
+
+interface RollBackState {
+  readonly target: string;
+  readonly backup: string;
+  readonly hadTarget: boolean;
+  readonly targetWritten: boolean;
+  readonly tag: string;
+}
+
+async function rollBack(state: RollBackState, move: Rename, cause: unknown): Promise<void> {
+  try {
+    if (state.targetWritten || state.hadTarget) await rm(state.target, { recursive: true, force: true });
+    if (state.hadTarget) await move(state.backup, state.target);
+    console.error(`icons:update: promotion failed; ${state.hadTarget ? `restored the previous ${state.tag} set` : 'removed the partial set'}`);
+  } catch (restoreError) {
+    // Keep the original failure as the cause; the message tells the maintainer where the backup is.
+    console.error(`icons:update: rollback failed; the previous set is kept at ${state.backup}`);
+    throw new AggregateError([cause, restoreError], 'icons:update promotion and rollback both failed', { cause });
   }
 }
 

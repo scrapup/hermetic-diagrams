@@ -287,17 +287,17 @@ describe('resolveAwsIncludes — real shipped set', () => {
   });
 });
 
-describe('resolveAwsIncludes — linear time (no regex backtracking on long lines)', () => {
-  it.each([
-    ['an include naming the upstream without an address', `!include aws-icons-for-plantuml${'a'.repeat(250_000)}`],
-    ['a long AWSPuml mention', `!include AWSPuml/${'a'.repeat(250_000)}`],
-  ])('handles %s in under 200 ms', (_label, line) => {
-    const started = performance.now();
-    try {
-      resolveAwsIncludes('plantuml', src(line), SET, { ...LIMITS, maxSourceBytes: 1e7, maxExpandedSourceBytes: 1e7 });
-    } catch {
-      // Refusal or pass-through are both fine; only the time matters here.
-    }
-    expect(performance.now() - started).toBeLessThan(200);
+describe('resolveAwsIncludes — very long lines (behaviour; the time budget lives in the perf project)', () => {
+  const BIG = { ...LIMITS, maxSourceBytes: 1e7, maxExpandedSourceBytes: 1e7 };
+
+  it('passes through a 250k-char include naming the upstream without an address', () => {
+    const source = src(`!include aws-icons-for-plantuml${'a'.repeat(250_000)}`);
+    expect(resolveAwsIncludes('plantuml', source, SET, BIG).source).toBe(source);
+  });
+
+  it('refuses a 250k-char AWSPuml mention as UNKNOWN_REFERENCE with a truncated detail', () => {
+    const err = refusal(() => resolveAwsIncludes('plantuml', src(`!include AWSPuml/${'a'.repeat(250_000)}`), SET, BIG));
+    expect(err.code).toBe('UNKNOWN_REFERENCE');
+    expect(err.detail?.length).toBeLessThan(300);
   });
 });
