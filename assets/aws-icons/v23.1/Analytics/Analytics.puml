@@ -1,0 +1,16 @@
+' Copyright 2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+' SPDX-License-Identifier: CC-BY-ND-2.0 (For details, see https://github.com/awslabs/aws-icons-for-plantuml/blob/main/LICENSE)
+sprite $Analytics [64x64/16z] {
+xTH7MiKm34NX8xdexd_5V1w1A7uH7PxF9FLFZ-F7qmSw_lZZdzIDNTPYwpitcpjl3EqAntSUT2EuGmyh_w2dvdF-CT_uaEymopvplTyF62hxC0kj9lJw-my3
+Pk85lxZvaW5DPRzug8CRhf9_vDA4nGi-yJNdAldCLsMVUTsFnEjU8-vn_7CkvwzvutBscfyGkb30VCtByIlUSIMV3xmlNsRswbogwmqlBppyxEiTV_pnFzu3
+}
+
+!function $AnalyticsIMG($scale=1)
+!return "<img data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAADAUlEQVR4nOWbWUhVQRjHf36dKAtNksKMViyJotAiIQ3LB4kSKymjFaynEHooiiIJoiKQFgpangyCiozEjKhooQjBRNsQLAXbMFuwRR+MFm9M4wXLinvNe+65fL+Xuecw58z/m/OfOd/M4UbtPXTUh2IE5Tj+H/1vrkcTX7OO/SzVO0BQjqAcQTmCcgTlCMoRlCMoR1COoBxBOU6vr4yC1BxImQ9xCfbYTdrewbP7UH0ePr0JgwNSc2DuOogb4X7whthhMDUbVh+ExOQwOCBlvi2vH4dHV8Hn5rZKFAxNhFnLITkDMgvgzFaXHRBnbE8Ygjf44H0zXDpgD//HAdLrK7ts73rw3fB1/qqlNwjKEZTj4EE2lf/5/NNaKNul2AHjpitxwP5FtpR+sHAbjJ8RurYED5NdaIPvaFPYAbPXwOQs+Pq578e95ztgei7MzIPO71BRDK8bFXXApEyYU2CzvSuH4dm90Lbn4BLRsbBoO4jYFPZjS886Y1Nh3gab2d0qgfrbPSfGiHRAdCws221z9oQJsGpfz1eaOZ+7xc781WVQW+GGMkLfAf7g40dD6wtorIIBg2FxEaQt7VrZjYS8HdB/INTdgDsncQ3HzeDPFkFHO6QtgfQVkLESEpJg+HiIjoGmGrh2FFdxXA2+631+9xy8bYIFGyEpzZ5rroeLxXbmdxMJxU0HDfl78N3z+lOboaXBBl++B759wXWcUDz5/F3/Dt7Ph1dwegthRdyyvVeRvrxZcnpkBd/nQ+DBZVs+qYyM4EMyB/g7IVIQlCMoxwm0Yv5uGDUl8P07t+mu42UdlBb1sQOiY4gYgtHqBFrRLE+X7LQ7NCcKob0VTxETDwVH7ILKaA0UCbTi84fQUGkbmLMWz2E0GW1Go9EakknwVol1wMR0GDMNz2C0GE1GWzBPP+g8wNi+qtRuWJrh4DWMtmCHpgTbSM0FePUYz2E0GW0hzwQ7v/f+W7wXEZQjKEdQjqAcQTmCcgTlCMoRlCMoR1COoBzn9//SakPCLSDc/ADvMs/4+hGGEQAAAABJRU5ErkJggg=={scale="+$scale+"}>"
+!endfunction
+
+AWSEntityColoring(Analytics)
+!define Analytics(e_alias, e_label, e_techn) AWSEntity(e_alias, e_label, e_techn, #8C4FFF, Analytics, Analytics)
+!define Analytics(e_alias, e_label, e_techn, e_descr) AWSEntity(e_alias, e_label, e_techn, e_descr, #8C4FFF, Analytics, Analytics)
+!define AnalyticsParticipant(p_alias, p_label, p_techn) AWSParticipant(p_alias, p_label, p_techn, #8C4FFF, Analytics, Analytics)
+!define AnalyticsParticipant(p_alias, p_label, p_techn, p_descr) AWSParticipant(p_alias, p_label, p_techn, p_descr, #8C4FFF, Analytics, Analytics)

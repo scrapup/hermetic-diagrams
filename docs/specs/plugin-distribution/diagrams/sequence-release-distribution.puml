@@ -1,0 +1,41 @@
+@startuml
+title Sequence - release publication and distribution (success + failure)
+
+actor Maintainer
+participant "main (GitHub)" as main
+participant "Release Process\n(GitHub Actions)" as release
+participant "npm registry" as npm
+participant "dist branch\n(orphan, force-pushed)" as dist
+actor User
+participant "AI assistant\n(Claude Code / Copilot CLI)" as assistant
+
+Maintainer -> main: merge PR (Conventional Commit)
+main -> release: push triggers the workflow
+
+release -> release: release-please creates tag/Release vX.Y.Z
+release -> npm: npm publish\n(prepublishOnly: build+lint+test+golden)
+
+alt Publish succeeds
+    npm --> release: OK
+    release -> release: build dist/ from the published tag
+    release -> dist: force-push the snapshot (source + dist/)
+    dist --> release: OK
+
+    ...later, on any install...
+    User -> assistant: marketplace install command
+    assistant -> main: reads .claude-plugin/marketplace.json
+    main --> assistant: source.ref = dist
+    assistant -> dist: fetches the plugin content from that ref
+    dist --> assistant: files ready (dist/ present, no local build)
+    assistant --> User: plugin installed and working on first use
+else Publish fails (build, lint, test or golden test break)
+    npm --> release: error
+    release -> release: aborts - dist branch is NOT touched
+    note right of dist
+        The last intact version
+        stays available; no
+        partial version is ever
+        exposed (RN-02, RN-04)
+    end note
+end
+@enduml

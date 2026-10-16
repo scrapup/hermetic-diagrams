@@ -1,0 +1,4 @@
+sprite $Std [1x1/16z] {
+x
+}
+!$s = %get_all_stdlib()

@@ -1,0 +1,30 @@
+@startuml
+!include <C4/C4_Container>
+title C4 N2 - Cross-platform entry point (npx) and one-time preparation (up)
+
+Person(user, "User", "Windows, macOS or Linux")
+System_Ext(assistant, "AI assistant", "Claude Code / Copilot CLI / any MCP client")
+System_Ext(npm, "npm registry", "@scrapup/hermetic-diagrams@<version> (pinned)")
+System_Ext(registry, "Container registries", "Kroki + Node base images (pinned by sha256)")
+
+System_Boundary(host, "User machine") {
+  Container(launcher, "Launcher", "node -e (inline, in .mcp.json)", "Resolves npx / npx.cmd per OS and runs the pinned package; stdio passthrough")
+  Container(cli, "CLI bin", "Node.js (npx cache)", "up: prepare + start + wait healthy; serve: preflight, then attach stdio")
+  Container(engine, "Container runtime", "Docker Engine / Desktop (Linux containers)", "Builds and runs the contained stack")
+  System_Boundary(hermetic, "hermetic network (internal: true, no ports)") {
+    Container(mcp, "MCP gateway", "hermetic-diagrams-mcp:<version>", "Ephemeral per session; PEP + boot gate")
+    Container(kroki, "Kroki", "yuzutech/kroki@sha256", "Headless renderer, KROKI_SAFE_MODE=SECURE")
+  }
+}
+
+Rel(user, cli, "npx @scrapup/hermetic-diagrams@<version> up (once)")
+Rel(cli, npm, "Fetched by npx (package only, never diagram source)", "HTTPS")
+Rel(engine, registry, "Pull by digest (up only)", "HTTPS")
+Rel(assistant, launcher, "Starts server", "stdio")
+Rel(launcher, cli, "npx --prefer-offline -y <pkg>@<version>", "stdio")
+Rel(cli, engine, "docker compose (up: pull/build/up --wait; serve: inspect + run -T)")
+Rel(engine, mcp, "run -T --rm", "stdio")
+Rel(mcp, kroki, "POST with body", "HTTP, internal DNS")
+
+SHOW_LEGEND()
+@enduml

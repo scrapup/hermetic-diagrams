@@ -1,0 +1,4 @@
+sprite $Env [1x1/16z] {
+x
+}
+!$home = %getenv("HOME")

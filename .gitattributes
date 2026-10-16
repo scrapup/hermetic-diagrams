@@ -1,0 +1,4 @@
+# The vendored AWS icon set is pinned by per-file sha256 (aws-icons.lock.json). Never let git
+# rewrite line endings there (core.autocrlf on Windows checkouts would break every hash).
+assets/aws-icons/** -text
+aws-icons.lock.json -text

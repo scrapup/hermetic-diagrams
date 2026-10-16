@@ -1,0 +1,16 @@
+' Copyright 2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+' SPDX-License-Identifier: CC-BY-ND-2.0 (For details, see https://github.com/awslabs/aws-icons-for-plantuml/blob/main/LICENSE)
+sprite $CloudFinancialManagement [64x64/16z] {
+xTC50eCm44JHoSJkV-AwnQtE_WhwSFoN9KaQGJIp_9ORu0wmJa7VPbWrj05zf0xAtoFOxmbx-0V2G-htAlL-p1-RzthMttA79lsjEK_S2lqzrZpQ7dKVYbJr
+UYA8OpxjZPuen3wFOhtUPnE_UltVSVzhlSdZK3X27EEqxxz-bVaRyUdrM_To_GujUFxA-zjHpHFDwBycITe3
+}
+
+!function $CloudFinancialManagementIMG($scale=1)
+!return "<img data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAACo0lEQVR4nO2bW2sTQRTH/3scakq8BNqQYlAwXiIoVGwLomJARVAR+qBQrPQTCOKbEBAprb74IohoX7QFP4I1SnwRRC1VH7zUFUHa2ofWVEvbSFqTVjbRoiE1u8nu7KzH38suw8yZy5455z8Dq12+en0RjCEwR/x6mQlcBCdWTxXmS2AOgTkE5hCYQ2AOgTkE5gg7jWka4fCuOFo2n0btyoCltulMCuNT7zA0msDA+15kc/PwnAe07r6C/dvPWJ68gd9Xj0jDPhxr6cK51icI1zXCUx4QCmxD05ZTmM+mcTvZhsnpj2iL9WBjaA8ev72J/sELf23v99VhQ7AZsR1nsT7YhI6Dd3Cj/yi+zo7AEx6wM3ICGjQ803sxPDGA2cxn3BssyM2t4QNl26czkxgavY+exHG8GbmLVb4gjjQ7L8/JLkP1azbln8MTT5fKjD1tsNa/zrSdhcUcHry4lH+PNOyFZxag9ue+z3yfWSrL5ubyzxrht2QrNf2hYLPGeixxNQsYtMduIbsgJ4IrtQCfUi/zAa+SDPBPLEDieScevb6GFfSnyfMnX0FlhJ3Gvs19gdcQlTY08nQ0fAhO090xXraOPpZE38N2uVkgKmHyMsYiqu083hcy9QXNfMlq7Ct7GtTHkq60dU0HFFPp3pQFgTnCTmMyMkM1Ed9xD4hKyAx29yHgAOUid6VUG/FLQWAOgTkE5hCYI7wSrDzhAboE6Wp3H4KT7C0FgTlCxv4vFkZm6iwnq5WWwjIkr/JSOG5CBluRyr/X/S+FHYDAHAJzhKpZQBYE5gjVs4DTEJhDYI5QPQg6fbQmKMpyx16lj8N2BkFZR2sCcwSn6y9bPUCXcP0lYyyC0/VXKQjMITCHwBwCcwjMITCHwBxR/C8tN8jtAbjND6X9yas/4Z1UAAAAAElFTkSuQmCC{scale="+$scale+"}>"
+!endfunction
+
+AWSEntityColoring(CloudFinancialManagement)
+!define CloudFinancialManagement(e_alias, e_label, e_techn) AWSEntity(e_alias, e_label, e_techn, #7AA116, CloudFinancialManagement, CloudFinancialManagement)
+!define CloudFinancialManagement(e_alias, e_label, e_techn, e_descr) AWSEntity(e_alias, e_label, e_techn, e_descr, #7AA116, CloudFinancialManagement, CloudFinancialManagement)
+!define CloudFinancialManagementParticipant(p_alias, p_label, p_techn) AWSParticipant(p_alias, p_label, p_techn, #7AA116, CloudFinancialManagement, CloudFinancialManagement)
+!define CloudFinancialManagementParticipant(p_alias, p_label, p_techn, p_descr) AWSParticipant(p_alias, p_label, p_techn, p_descr, #7AA116, CloudFinancialManagement, CloudFinancialManagement)

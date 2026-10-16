@@ -1,0 +1,13 @@
+' Copyright 2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+' SPDX-License-Identifier: CC-BY-ND-2.0 (For details, see https://github.com/awslabs/aws-icons-for-plantuml/blob/main/LICENSE)
+sprite $Lambda [64x64/16z] {
+xPC5TiLG509vclslk7PhKv
+}
+
+!function $LambdaIMG($scale=1)
+!return "<img data:image/png;base64,iVBORw0KGgo{scale=" + $scale + "}>"
+!endfunction
+
+AWSEntityColoring(Lambda)
+!define Lambda(e_alias, e_label, e_techn) AWSEntity(e_alias, e_label, e_techn, #ED7100, Lambda, Lambda)
+!define LambdaParticipant(p_alias, p_label, p_techn) AWSParticipant(p_alias, p_label, p_techn, #ED7100, Lambda, Lambda)

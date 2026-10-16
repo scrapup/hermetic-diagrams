@@ -1,0 +1,87 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions: {}
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # Fast, hermetic gates — no Docker. Runs on the full OS matrix (TF-76-04).
+  verify:
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm run build
+      - run: npm run test:coverage
+
+  # Containment proof — integration + golden exfiltration against the real compose stack.
+  # Requires Linux containers (Kroki); GitHub-hosted macOS/Windows runners cannot run them,
+  # so this job is Linux-only (TF-76-05, plan §7.2).
+  containment:
+    needs: verify
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: npm run build
+      - name: Performance SLAs (Linux only, outside the coverage gate)
+        run: npm run test:perf
+      - name: Integration (compose stack, all notations)
+        run: npm run test:integration
+      - name: Golden exfiltration (zero sink hits)
+        run: npm run test:golden
+
+  # Homologation gate (TF-76-03, aws-icons TF-109-03): a change to a guarded path — the image
+  # digests (images.lock), the AWS icon-set pin (aws-icons.lock.json) or shipped content (assets/:
+  # icons and authoring guides) — may only merge after the containment suites re-prove containment
+  # with it (golden + integration, which renders every guide example). Enforced by
+  # `needs: containment`; this job makes the policy explicit and names what changed.
+  homologation:
+    needs: containment
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Check homologation of guarded paths
+        run: |
+          BASE="${{ github.event.pull_request.base.sha }}"
+          if [ -z "$BASE" ]; then BASE="${{ github.event.before }}"; fi
+          if [ -z "$BASE" ] || ! git cat-file -e "$BASE" 2>/dev/null; then
+            echo "No comparable base ref; skipping the guarded-path diff (containment already proven)."
+            exit 0
+          fi
+          GUARDED="$(git diff --name-only "$BASE" HEAD | grep -E '^(images\.lock|aws-icons\.lock\.json|assets/)' || true)"
+          if [ -n "$GUARDED" ]; then
+            echo "Guarded paths changed — containment was re-proven by the 'containment' job (golden + integration + guide examples):"
+            printf '%s\n' "$GUARDED" | cut -d/ -f1-3 | sort | uniq -c | sed 's/^/  /'
+          else
+            echo "No guarded path changed (images.lock, aws-icons.lock.json, assets/)."
+          fi
