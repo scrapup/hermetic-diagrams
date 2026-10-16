@@ -4,6 +4,13 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0](https://github.com/scrapup/hermetic-diagrams/compare/v0.4.2...v0.5.0) (2026-10-16)
+
+
+### Features
+
+* **icons:** AWS architecture icons and authoring guides, contained ([#40](https://github.com/scrapup/hermetic-diagrams/issues/40)) ([0cba35d](https://github.com/scrapup/hermetic-diagrams/commit/0cba35de31ae7ef8c92da9981fcac9cb19f042f0))
+
 ## [0.4.2](https://github.com/scrapup/hermetic-diagrams/compare/v0.4.1...v0.4.2) (2026-10-03)
 
 
