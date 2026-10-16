@@ -1,0 +1,16 @@
+' Copyright 2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+' SPDX-License-Identifier: CC-BY-ND-2.0 (For details, see https://github.com/awslabs/aws-icons-for-plantuml/blob/main/LICENSE)
+sprite $FrontEndWebMobile [64x64/16z] {
+xTO53aCX48JXmU7-1wx5osfTzey--HAYmtXxwuv-o8Tl2LofwRv1gga-eIskXgHwOF41h_4PUzdXGMNrz7zly5HlyptXgjGzFc4hcJtv2WWVFdpuyDh-4QyW
+-7oFjqx_Stn2apmk2Rw1YlRs-v_z_7HkxzzVEdt_u_uV_kqT0G
+}
+
+!function $FrontEndWebMobileIMG($scale=1)
+!return "<img data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAACHUlEQVR4nOXbP0scQRgG8Gcf5poDtfASlGiTr5DYmN5CiVocAQkpDJZCYm0hKY60CRz5AmoCIvgPLdLHxvgVLILCEa85hWuU2zB7WRARXNmZ3T2fHyx7xTCz8+57u3v7zgWfv34LIYwQZ+IPb1YPoGTj3WS0l88AQhwhjhBHiCPEEeJM4pZBgIG3s+ivTqL0bAi+XZ01cLF5gNb6NhCG+QdgYG4agx/eIys2yNF4nQ5a33fyD0B/dSran9fquNz56fWs2Gzrm5nAk+XFaFyfAWDShqWRbtpf7nqevBWG3XFujJv/RTAIuvtORj8e43HicXO/CN5h6MsKyq9ewpX2r99ofPyEnrkNlh1O3kd/3jMgdjL2Gmk9P9pDHghxBgVxVxa5yKz7EOIMCqI8/gKV5UWYp5VU/Vz/baJZq6N9eNxbGVBxMHnL9mH7StweBRFPPu333t5NHhJIQhwhjhBHiCPEEeIIcYQ4QhwhjhBHiCPEEeIIcYQ4QhwhjhBHiDMuOklT1rr9EjTrEhnTVnOlM6DhoZTt4rW4nwwI/y9YoN8FC4XNgKvTBkqjw+ibnvC/RijhWXVRPDVJG15s7mNwaSFauGQ3V7KoADsJQOvHLkBmtk4wqyCZxC3DEK21rWh7TAwKwpa1bVHTxXOA7avnngSbtfqDDvy+9QE9lwHtw2P8mZrPfFxCHCGOEEeII8QR4ghx5vZ/adUw7wPI2z86M42qK1LGmwAAAABJRU5ErkJggg=={scale="+$scale+"}>"
+!endfunction
+
+AWSEntityColoring(FrontEndWebMobile)
+!define FrontEndWebMobile(e_alias, e_label, e_techn) AWSEntity(e_alias, e_label, e_techn, #DD344C, FrontEndWebMobile, FrontEndWebMobile)
+!define FrontEndWebMobile(e_alias, e_label, e_techn, e_descr) AWSEntity(e_alias, e_label, e_techn, e_descr, #DD344C, FrontEndWebMobile, FrontEndWebMobile)
+!define FrontEndWebMobileParticipant(p_alias, p_label, p_techn) AWSParticipant(p_alias, p_label, p_techn, #DD344C, FrontEndWebMobile, FrontEndWebMobile)
+!define FrontEndWebMobileParticipant(p_alias, p_label, p_techn, p_descr) AWSParticipant(p_alias, p_label, p_techn, p_descr, #DD344C, FrontEndWebMobile, FrontEndWebMobile)

@@ -1,0 +1,4 @@
+sprite $Imp [1x1/16z] {
+x
+}
+!import lib.zip

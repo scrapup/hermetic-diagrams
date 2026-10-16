@@ -24,6 +24,11 @@ COPY --from=deps /app/node_modules ./node_modules
 # Prebuilt output from the package (`npm run build` first in a source checkout).
 COPY dist ./dist
 COPY package.json ./
+# Vendored AWS icon set + its lock, baked read-only (owned by root, no write bit for anyone): the
+# gateway verifies every file's sha256 at boot and only ever reads them. No volumes, no mounts.
+COPY --chown=root:root assets ./assets
+COPY --chown=root:root aws-icons.lock.json ./
+RUN chmod -R a-w /app/assets /app/aws-icons.lock.json
 # The official Node image ships a non-root `node` user (uid 1000).
 USER node
 # MCP over stdio: no ports, no network server.

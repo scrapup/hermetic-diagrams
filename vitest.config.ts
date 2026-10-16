@@ -6,7 +6,17 @@ export default defineConfig({
       {
         test: {
           name: 'unit',
-          include: ['src/**/*.spec.ts'],
+          include: ['src/**/*.spec.ts', 'scripts/**/*.spec.ts'],
+          exclude: ['src/**/*.perf.spec.ts'],
+          environment: 'node',
+        },
+      },
+      {
+        // Wall-clock SLAs: kept out of the coverage-instrumented unit gate on the OS matrix and run
+        // on a dedicated Linux step (aws-icons spec §5).
+        test: {
+          name: 'perf',
+          include: ['src/**/*.perf.spec.ts'],
           environment: 'node',
         },
       },
@@ -30,8 +40,8 @@ export default defineConfig({
     ],
     coverage: {
       provider: 'v8',
-      include: ['src/**/*.ts'],
-      exclude: ['src/**/*.spec.ts', 'src/index.ts', 'src/cli/bin.ts'],
+      include: ['src/**/*.ts', 'scripts/**/*.ts'],
+      exclude: ['src/**/*.spec.ts', 'scripts/**/*.spec.ts', 'src/index.ts', 'src/cli/bin.ts'],
       thresholds: {
         lines: 80,
         functions: 80,

@@ -1,0 +1,4 @@
+sprite $Json [1x1/16z] {
+x
+}
+!$j = %load_json("data.json")

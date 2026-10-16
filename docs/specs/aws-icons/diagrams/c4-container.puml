@@ -1,0 +1,37 @@
+@startuml c4-container
+!include <C4/C4_Container>
+title hermetic-diagrams — AWS icons and authoring guides (C4 Level 2)
+
+Person(requester, "Requester", "Developer or AI assistant")
+Person(maintainer, "Maintainer", "Reviews and merges icon-set update PRs")
+
+System_Boundary(host, "User machine") {
+  Container(cli, "hermetic-diagrams CLI", "Node.js, host", "up / serve; never sees diagram source")
+  Boundary(net, "Docker network `hermetic` (internal: true, no egress)") {
+    Container(mcp, "MCP Gateway + PEP", "Node.js, container", "Resolves AWSPuml/ includes from the shipped set; serves icon catalog and authoring guides")
+    ContainerDb(assets, "Shipped assets", "files baked into the mcp image", "assets/aws-icons/<tag>/ + aws-icons.lock.json + assets/guides/")
+    Container(kroki, "Kroki core", "render engine", "SAFE_MODE=SECURE; receives only self-contained source")
+  }
+}
+
+System_Boundary(supply, "Supply chain (maintenance time only — never at render time)") {
+  Container(workflow, "aws-icons-update workflow", "GitHub Actions, weekly + manual", "Detects new upstream tag, runs the update script, opens a PR")
+  Container(script, "aws-icons update script", "Node.js, scripts/", "Download, verify, scan, vendor, diff catalog")
+  Container(ci, "CI (verify + containment + homologation)", "GitHub Actions", "Unit, golden, integration, guide examples")
+}
+
+System_Ext(upstream, "awslabs/aws-icons-for-plantuml", "GitHub releases (tag-pinned tarball)")
+System_Ext(npm, "npm registry", "@scrapup/hermetic-diagrams")
+
+Rel(requester, cli, "MCP over stdio", "npx")
+Rel(cli, mcp, "docker compose run -T mcp", "stdio")
+Rel(mcp, assets, "Loads + verifies sha256 at boot", "read-only fs")
+Rel(mcp, kroki, "POST expanded source", "internal HTTP")
+
+Rel(workflow, script, "runs <tag>")
+Rel(script, upstream, "GET tarball by tag", "HTTPS")
+Rel(workflow, ci, "PR triggers")
+Rel(maintainer, ci, "Merges only when green")
+Rel(ci, npm, "release-please publishes")
+Rel(npm, cli, "npx pulls package (setup)")
+@enduml

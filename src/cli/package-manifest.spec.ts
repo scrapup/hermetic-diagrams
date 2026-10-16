@@ -16,7 +16,17 @@ const pkg = JSON.parse(readFileSync(path.join(ROOT, 'package.json'), 'utf8')) as
 };
 
 describe('package.json files', () => {
-  it.each(['dist', 'compose.yaml', 'Dockerfile', '.dockerignore', 'npm-shrinkwrap.json', 'images.lock'])(
+  it.each([
+    'dist',
+    'compose.yaml',
+    'Dockerfile',
+    '.dockerignore',
+    'npm-shrinkwrap.json',
+    'images.lock',
+    'assets',
+    'aws-icons.lock.json',
+    'THIRD_PARTY_NOTICES.md',
+  ])(
     'ships %s',
     (entry) => {
       expect(pkg.files).toContain(entry);
@@ -42,6 +52,11 @@ describe('.dockerignore', () => {
 
   it('keeps dist in the build context (the image copies it)', () => {
     expect(entries).not.toContain('dist');
+  });
+
+  it.each(['assets', 'aws-icons.lock.json'])('keeps %s in the build context (baked into the image)', (entry) => {
+    expect(entries).not.toContain(entry);
+    expect(entries).not.toContain(`${entry}/`);
   });
 
   it('keeps sources and node_modules out of the build context', () => {

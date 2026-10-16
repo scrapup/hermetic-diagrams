@@ -1,0 +1,4 @@
+sprite $Dtd [1x1/16z] {
+x
+}
+<!DOCTYPE svg [<!ENTITY x SYSTEM "file:///etc/passwd">]>

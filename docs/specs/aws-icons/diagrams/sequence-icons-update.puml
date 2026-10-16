@@ -1,0 +1,42 @@
+@startuml sequence-icons-update
+title Icon-set update — scheduled detection, verification and human-gated promotion
+autonumber
+
+participant "aws-icons-update\nworkflow (weekly)" as wf
+participant "GitHub API" as api
+participant "update script" as script
+participant "awslabs/aws-icons-for-plantuml\n(codeload)" as up
+participant "Pull Request" as pr
+participant "CI: verify +\ncontainment + homologation" as ci
+actor Maintainer as m
+
+wf -> api : latest release tag
+api --> wf : tag (e.g. v24.0)
+alt tag == aws-icons.lock.json tag
+  wf -> wf : no-op, job summary "up to date"
+else upstream unreachable
+  wf -> wf : fail job (no PR); retried next schedule
+else newer tag
+  wf -> script : npm run icons:update -- v24.0
+  script -> api : resolve tag -> commit sha
+  script -> up : GET tarball by commit sha
+  up --> script : tarball
+  script -> script : sha256(tarball); extract dist/**/*.puml\n(no all.puml) + LICENSE into fresh dir
+  script -> script : vendored-content scan (strict rules)\n+ all.puml equivalence check
+  alt scan or equivalence fails
+    script --> wf : exit 1 + report (offending file/rule)
+    wf -> wf : fail job; no PR
+  else ok
+    script -> script : write assets/aws-icons/v24.0/,\nlock (tag, commit, tarball sha256, per-file sha256),\ncatalog diff (added/removed)
+    script --> wf : diff report
+    wf -> pr : open/refresh PR\n"feat(icons): ..." or "feat(icons)!: ..." if removals
+    pr -> ci : triggers (app token)
+    ci -> ci : unit + guide examples + golden + integration\n(every guide example renders)
+    alt any gate red
+      ci --> pr : blocked
+    else green
+      m -> pr : review catalog diff, merge
+    end
+  end
+end
+@enduml

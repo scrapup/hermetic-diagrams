@@ -35,8 +35,11 @@
     "compose.yaml",
     "Dockerfile",
     "images.lock",
+    "aws-icons.lock.json",
+    "assets",
     "README.md",
     "LICENSE",
+    "THIRD_PARTY_NOTICES.md",
     "CHANGELOG.md",
     ".dockerignore",
     "npm-shrinkwrap.json"
@@ -53,8 +56,10 @@
     "test": "vitest run --project unit",
     "test:watch": "vitest --project unit",
     "test:coverage": "vitest run --project unit --coverage",
+    "test:perf": "vitest run --project perf",
     "test:golden": "vitest run --project golden",
     "test:integration": "vitest run --project integration --no-file-parallelism",
+    "icons:update": "npm run build && node scripts/aws-icons/update.ts",
     "start": "node dist/index.js",
     "prepublishOnly": "npm run build && npm run lint && npm run test && npm run test:golden"
   },

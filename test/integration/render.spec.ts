@@ -88,6 +88,13 @@ describe('containment_status tool', () => {
   });
 });
 
+describe('containment_status — AWS icon set (aws-icons TF-106-04)', () => {
+  it('reports the shipped icon set as verified', async () => {
+    const res = (await client.callTool({ name: 'containment_status', arguments: {} })) as unknown as ToolCallResult;
+    expect(res.structuredContent).toMatchObject({ awsIcons: { state: 'verified', version: 'v23.1' } });
+  });
+});
+
 describe('list_formats tool', () => {
   it('lists the eight input notations', async () => {
     const res = (await client.callTool({ name: 'list_formats', arguments: {} })) as unknown as ToolCallResult;
@@ -127,5 +134,110 @@ describe('render_diagram — refuses external references', () => {
     });
     expect(res.isError).toBe(true);
     expect(res.structuredContent).toMatchObject({ error: { code: 'EXTERNAL_REFERENCE' } });
+  });
+});
+
+/** Text of the image PlantUML draws instead of the diagram when it crashes. */
+const ENGINE_CRASH = /An error has occurred|has crashed/;
+
+interface AwsFixture {
+  readonly name: string;
+  readonly format: 'plantuml' | 'c4';
+  readonly source: string;
+}
+
+/**
+ * Builds an AWS diagram: `head` lines first (e.g. `!$AWS_DARK = true`, a bundled C4 include), then
+ * `!include AWSPuml/<path>.puml` for each of `includes` (in order), then the body.
+ */
+function aws(name: string, includes: readonly string[], body: string, options: { format?: 'c4'; head?: string } = {}): AwsFixture {
+  const lines = [
+    '@startuml',
+    ...(options.head === undefined ? [] : [options.head]),
+    ...includes.map((path) => `!include AWSPuml/${path}.puml`),
+    body,
+    '@enduml',
+  ];
+  return { name, format: options.format ?? 'plantuml', source: lines.join('\n') };
+}
+
+/** AWS diagrams through the MCP (aws-icons TF-106-04): includes resolved from the shipped set. */
+const AWS_FIXTURES: readonly AwsFixture[] = [
+  aws(
+    'every group with an icon (engine shim, D-11)',
+    ['AWSCommon', 'Groups/AWSCloud', 'Groups/AWSAccount', 'Groups/Region', 'Groups/VPC', 'Groups/PrivateSubnet', 'Groups/AutoScalingGroup'],
+    'AWSCloudGroup(cloud) {\nAWSAccountGroup(acct, "Production") {\nRegionGroup(region, "eu-west-1") {\nVPCGroup(vpc) {\n' +
+      'PrivateSubnetGroup(subnet, "Private") {\nAutoScalingGroupGroup(asg) {\n}\n}\n}\n}\n}\n}',
+  ),
+  aws(
+    'experimental icon notes (engine shim, D-11)',
+    ['AWSCommon', 'AWSExperimental', 'Compute/Lambda'],
+    'participant A\nparticipant B\nA -> B : <$Callout_1> call\n$AWSIconRight("Lambda", "Handler")',
+  ),
+  aws(
+    'architecture with groups',
+    ['AWSCommon', 'Groups/AWSCloud', 'Groups/VPC', 'Groups/PublicSubnet', 'Compute/Lambda', 'Storage/SimpleStorageService'],
+    'AWSCloudGroup(cloud) {\nVPCGroup(vpc) {\nPublicSubnetGroup(subnet, "Public subnet") {\nLambda(fn, "Handler", "Node.js 24")\n}\n}\n' +
+      'SimpleStorageService(bucket, "Assets", "S3")\n}\nfn --> bucket',
+  ),
+  aws(
+    'sequence with participants',
+    ['AWSCommon', 'Compute/Lambda', 'Database/DynamoDB'],
+    'actor User as u\nLambdaParticipant(fn, "Handler", "Node.js 24")\nDynamoDBParticipant(db, "Orders", "table")\n' +
+      'u -> fn : invoke\nfn -> db : PutItem',
+  ),
+  aws(
+    'c4 with AWSC4Integration',
+    ['AWSC4Integration', 'AWSCommon', 'Compute/Lambda', 'Database/DynamoDB'],
+    'Person(user, "User")\nContainer(fn, "Handler", "Lambda", "Serves requests", $sprite="Lambda")\n' +
+      'ContainerDb(table, "Orders", "DynamoDB", "Stores orders", $sprite="DynamoDB")\nRel(user, fn, "Calls")\nRel(fn, table, "Reads/writes")',
+    { format: 'c4', head: '!include <C4/C4_Container>' },
+  ),
+  aws('dark mode', ['AWSCommon', 'Compute/Lambda'], 'Lambda(fn, "Handler", "Node.js 24")', { head: '!$AWS_DARK = true' }),
+  aws(
+    'simplified style',
+    ['AWSCommon', 'AWSSimplified', 'Compute/Lambda', 'Storage/SimpleStorageService'],
+    'Lambda(fn, "Handler", "")\nSimpleStorageService(bucket, "Assets", "")\nfn --> bucket',
+  ),
+  aws(
+    'category all.puml',
+    ['AWSCommon', 'Storage/all'],
+    'SimpleStorageService(bucket, "Assets", "S3")\nBackup(bk, "Backups", "AWS Backup")\nbucket --> bk',
+  ),
+];
+
+describe('render_diagram — AWS icons (aws-icons TF-106-04)', () => {
+  for (const fx of AWS_FIXTURES) {
+    it(`renders ${fx.name} to sanitized SVG`, async () => {
+      const res = await callRender({ format: fx.format, source: fx.source, output: 'svg' });
+      expect(res.isError, res.content[0]?.text).toBeFalsy();
+      const svg = res.content[0]?.text ?? '';
+      expect(svg).toMatch(/<svg/i);
+      expect(svg).not.toMatch(/<script/i);
+      // The engine answers HTTP 200 with a stack-trace image when PlantUML crashes (aws-icons D-11).
+      expect(svg).not.toMatch(ENGINE_CRASH);
+    });
+
+    it(`renders ${fx.name} to PNG`, async () => {
+      const res = await callRender({ format: fx.format, source: fx.source, output: 'png' });
+      expect(res.isError, res.content[0]?.text).toBeFalsy();
+      expect((res.content[0]?.data ?? '').length).toBeGreaterThan(0);
+    });
+  }
+
+  it('keeps the embedded icon images in the sanitized SVG', async () => {
+    const res = await callRender({ format: 'plantuml', source: AWS_FIXTURES.find((f) => f.name === 'architecture with groups')!.source, output: 'svg' });
+    expect(res.content[0]?.text ?? '').toContain('data:image/png');
+  });
+
+  it.each([
+    ['!include AWSPuml/AWSCommon.puml\n!include AWSPuml/Compute/Lambdda.puml', 'UNKNOWN_REFERENCE'],
+    ['!include AWSPuml/../AWSCommon.puml', 'UNKNOWN_REFERENCE'],
+    ['!define AWSPuml https://raw.githubusercontent.com/awslabs/aws-icons-for-plantuml/v23.1/dist', 'EXTERNAL_REFERENCE'],
+    ['!include AWSPuml/Compute/Lambda.puml\n!include AWSPuml/AWSCommon.puml', 'INVALID_SYNTAX'],
+  ])('refuses %j with %s before rendering', async (body, code) => {
+    const res = await callRender({ format: 'plantuml', source: `@startuml\n${body}\n@enduml` });
+    expect(res.isError).toBe(true);
+    expect(res.structuredContent).toMatchObject({ error: { code } });
   });
 });

@@ -4,9 +4,10 @@ import { loadConfig } from '../../config.js';
 import { ConcurrencyGuard } from '../../render/concurrency.js';
 import type { FetchLike } from '../../render/kroki-client.js';
 import type { RenderPipelineDeps } from '../../render/render-pipeline.js';
+import { UNVERIFIED_ICON_SET } from '../../../test/helpers/icon-sets.js';
 
 function deps(fetchImpl: FetchLike): RenderPipelineDeps {
-  return { config: loadConfig(), guard: new ConcurrencyGuard(2), fetchImpl };
+  return { config: loadConfig(), guard: new ConcurrencyGuard(2), iconSet: UNVERIFIED_ICON_SET, fetchImpl };
 }
 
 const svgWithScript =

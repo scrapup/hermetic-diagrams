@@ -1,0 +1,66 @@
+@startuml sequence-render-aws
+title render_diagram with AWSPuml/ includes — success and failure paths
+autonumber
+
+actor Requester as req
+participant "Tool Registry" as tools
+participant "Format +\nSyntax Validators" as val
+participant "AWS Include\nResolver" as res
+participant "Icon Set Store" as store
+participant "Security Scanner" as sec
+participant "Kroki Client" as client
+participant "Kroki core\n(SECURE)" as kroki
+participant "Output Sanitizer" as san
+
+== Boot (once per session) ==
+store -> store : load aws-icons.lock.json + files,\nverify sha256 of each file
+alt all hashes match
+  store -> store : state = VERIFIED (version v23.1)
+else any mismatch / missing file
+  store -> store : state = UNVERIFIED\n(log boot.aws_icons failed; other notations unaffected)
+end
+
+== Request ==
+req -> tools : render_diagram(format=plantuml|c4, source, output)
+tools -> val : size (raw) -> allowlist -> syntax
+val -> res : resolve(format, source)
+
+alt no AWSPuml/ reference
+  res --> sec : source unchanged
+else store UNVERIFIED
+  res --> tools : ICONS_UNAVAILABLE
+  tools --> req : error (no render)
+else `!define AWSPuml ...` / `!$AWSPuml` redefinition
+  res --> tools : EXTERNAL_REFERENCE
+  tools --> req : error — use bare AWSPuml/ paths
+else path not in allowlist (typo, `..`, encoded, absolute)
+  res --> tools : UNKNOWN_REFERENCE (path, hint: list_aws_icons)
+  tools --> req : error (no render)
+else icon used before AWSCommon.puml
+  res --> tools : INVALID_SYNTAX (include AWSPuml/AWSCommon.puml first)
+  tools --> req : error (no render)
+else ok
+  res -> store : get(path) for each unique include
+  store --> res : verified content
+  res -> res : inline in place, dedupe,\nexpand all.puml from manifest
+  alt expanded > MAX_EXPANDED_SOURCE_BYTES
+    res --> tools : TOO_LARGE (both limits in detail)
+    tools --> req : error (no render)
+  else
+    res --> sec : expanded source
+  end
+end
+
+sec -> sec : scanSecurity(format, expanded)
+alt external reference found
+  sec --> tools : EXTERNAL_REFERENCE
+  tools --> req : error (no render)
+else clean
+  sec -> client : render
+  client -> kroki : POST /plantuml|c4plantuml/{svg|png}\n(body = expanded source)
+  kroki --> client : image
+  client -> san : sanitize (svg)
+  san --> tools : image
+  tools --> req : image (log aws.resolve: counts, bytes, ms — never names/source)
+end
+@enduml

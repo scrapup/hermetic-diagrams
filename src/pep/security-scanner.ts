@@ -121,17 +121,22 @@ const SCANNERS: Readonly<Record<DiagramFormat, (source: string) => void>> = {
   'vega-lite': scanVega,
 };
 
+/** Which limit a size check enforces: the Requester's raw source, or the source after expansion. */
+export type SizeSubject = 'source' | 'expanded';
+
 /**
  * Enforce the source size limit. This is the **first** PEP gate — the pipeline calls it before any
  * parsing/regex so an oversized payload is rejected before it can be scanned (local-DoS defense,
- * `plan.md` §5.5). Throws {@link HermeticError} `TOO_LARGE`.
+ * `plan.md` §5.5). Throws {@link HermeticError} `TOO_LARGE`; `detail` names the limit that was hit.
  */
-export function assertSourceSize(source: string, maxSourceBytes: number): void {
+export function assertSourceSize(source: string, maxSourceBytes: number, subject: SizeSubject = 'source'): void {
   const byteLength = Buffer.byteLength(source, 'utf8');
   if (byteLength > maxSourceBytes) {
+    const what = subject === 'source' ? 'Source' : 'Expanded source (after AWSPuml/ includes)';
     throw new HermeticError(
       'TOO_LARGE',
-      `Source exceeds the maximum size of ${maxSourceBytes} bytes (got ${byteLength}).`,
+      `${what} exceeds the maximum size of ${maxSourceBytes} bytes (got ${byteLength}).`,
+      subject,
     );
   }
 }
@@ -140,8 +145,13 @@ export function assertSourceSize(source: string, maxSourceBytes: number): void {
  * Enforce the source size limit (again, defensively) and run the per-notation security rules.
  * Throws {@link HermeticError} `TOO_LARGE` or `EXTERNAL_REFERENCE`; returns silently when clean.
  */
-export function scanSecurity(format: DiagramFormat, source: string, maxSourceBytes: number): void {
-  assertSourceSize(source, maxSourceBytes);
+export function scanSecurity(
+  format: DiagramFormat,
+  source: string,
+  maxSourceBytes: number,
+  subject: SizeSubject = 'source',
+): void {
+  assertSourceSize(source, maxSourceBytes, subject);
 
   scanCommonXml(source);
   SCANNERS[format](source);

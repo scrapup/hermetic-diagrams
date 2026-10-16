@@ -144,3 +144,8 @@ vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 .vite/
 .msr/
+
+# icons:update staging leftovers (an interrupted run never touches the vendored set)
+assets/aws-icons/.staging-*
+assets/aws-icons/.previous-*
+.aws-icons.lock.json.*
